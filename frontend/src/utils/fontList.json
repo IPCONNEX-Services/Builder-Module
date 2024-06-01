@@ -1,0 +1,416 @@
+{
+	"items": [
+		{
+			"family": "Inter",
+			"variants": [
+				"100",
+				"100italic",
+				"200",
+				"200italic",
+				"300",
+				"300italic",
+				"400",
+				"400italic",
+				"500",
+				"500italic",
+				"600",
+				"600italic",
+				"700",
+				"700italic",
+				"800",
+				"800italic",
+				"900",
+				"900italic"
+			]
+		},
+		{
+			"family": "Roboto",
+			"variants": ["regular", "italic", "500", "500italic", "700", "700italic"]
+		},
+		{
+			"family": "Open Sans",
+			"variants": [
+				"regular",
+				"italic",
+				"300",
+				"300italic",
+				"600",
+				"600italic",
+				"700",
+				"700italic",
+				"800",
+				"800italic"
+			]
+		},
+		{
+			"family": "Lato",
+			"variants": [
+				"regular",
+				"italic",
+				"100",
+				"100italic",
+				"300",
+				"300italic",
+				"700",
+				"700italic",
+				"900",
+				"900italic"
+			]
+		},
+		{
+			"family": "Montserrat",
+			"variants": [
+				"regular",
+				"italic",
+				"100",
+				"100italic",
+				"200",
+				"200italic",
+				"300",
+				"300italic",
+				"500",
+				"500italic",
+				"600",
+				"600italic",
+				"700",
+				"700italic",
+				"800",
+				"800italic",
+				"900",
+				"900italic"
+			]
+		},
+		{
+			"family": "Raleway",
+			"variants": [
+				"regular",
+				"italic",
+				"100",
+				"100italic",
+				"200",
+				"200italic",
+				"300",
+				"300italic",
+				"500",
+				"500italic",
+				"600",
+				"600italic",
+				"700",
+				"700italic",
+				"800",
+				"800italic",
+				"900",
+				"900italic"
+			]
+		},
+		{
+			"family": "Source Sans Pro",
+			"variants": [
+				"regular",
+				"italic",
+				"200",
+				"200italic",
+				"300",
+				"300italic",
+				"600",
+				"600italic",
+				"700",
+				"700italic",
+				"900",
+				"900italic"
+			]
+		},
+		{
+			"family": "Oswald",
+			"variants": ["regular", "200", "300", "500", "600", "700"]
+		},
+		{
+			"family": "Poppins",
+			"variants": [
+				"regular",
+				"italic",
+				"200",
+				"200italic",
+				"300",
+				"300italic",
+				"500",
+				"500italic",
+				"600",
+				"600italic",
+				"700",
+				"700italic",
+				"800",
+				"800italic",
+				"900",
+				"900italic"
+			]
+		},
+		{
+			"family": "Ubuntu",
+			"variants": ["regular", "italic", "300", "300italic", "500", "500italic", "700", "700italic"]
+		},
+		{
+			"family": "Playfair Display",
+			"variants": ["regular", "italic", "700", "700italic", "900", "900italic"]
+		},
+		{
+			"family": "Noto Sans",
+			"variants": ["regular", "italic", "700", "700italic"]
+		},
+		{
+			"family": "Quicksand",
+			"variants": ["regular", "italic", "300", "300italic", "500", "500italic", "700", "700italic"]
+		},
+		{
+			"family": "Merriweather",
+			"variants": ["regular", "italic", "700", "700italic", "900", "900italic"]
+		},
+		{
+			"family": "Lora",
+			"variants": ["regular", "italic", "500", "500italic", "600", "600italic", "700", "700italic"]
+		},
+		{
+			"family": "Pacifico",
+			"variants": ["regular"]
+		},
+		{
+			"family": "Comfortaa",
+			"variants": ["regular"]
+		},
+		{
+			"family": "Dosis",
+			"variants": ["regular", "200", "300", "500", "600", "700", "800"]
+		},
+		{
+			"family": "Montserrat Alternates",
+			"variants": [
+				"regular",
+				"italic",
+				"500",
+				"500italic",
+				"600",
+				"600italic",
+				"700",
+				"700italic",
+				"800",
+				"800italic"
+			]
+		},
+		{
+			"family": "Work Sans",
+			"variants": [
+				"regular",
+				"italic",
+				"100",
+				"100italic",
+				"200",
+				"200italic",
+				"300",
+				"300italic",
+				"500",
+				"500italic",
+				"600",
+				"600italic",
+				"700",
+				"700italic",
+				"800",
+				"800italic",
+				"900",
+				"900italic"
+			]
+		},
+		{
+			"family": "Roboto Condensed",
+			"variants": ["regular", "italic", "300", "300italic", "700", "700italic"]
+		},
+		{
+			"family": "Josefin Sans",
+			"variants": [
+				"regular",
+				"italic",
+				"100",
+				"100italic",
+				"300",
+				"300italic",
+				"600",
+				"600italic",
+				"700",
+				"700italic"
+			]
+		},
+		{
+			"family": "Indie Flower",
+			"variants": ["regular"]
+		},
+		{
+			"family": "Dancing Script",
+			"variants": ["regular", "700"]
+		},
+		{
+			"family": "Archivo",
+			"variants": ["regular", "italic", "500", "500italic", "600", "600italic", "700", "700italic"]
+		},
+		{
+			"family": "Titillium Web",
+			"variants": [
+				"regular",
+				"italic",
+				"200",
+				"200italic",
+				"300",
+				"300italic",
+				"600",
+				"600italic",
+				"700",
+				"700italic",
+				"900",
+				"900italic"
+			]
+		},
+		{
+			"family": "Exo",
+			"variants": [
+				"regular",
+				"italic",
+				"100",
+				"100italic",
+				"200",
+				"200italic",
+				"300",
+				"300italic",
+				"500",
+				"500italic",
+				"600",
+				"600italic",
+				"700",
+				"700italic",
+				"800",
+				"800italic",
+				"900",
+				"900italic"
+			]
+		},
+		{
+			"family": "Cabin",
+			"variants": ["regular", "italic", "500", "500italic", "600", "600italic", "700", "700italic"]
+		},
+		{
+			"family": "Yanone Kaffeesatz",
+			"variants": ["regular", "200", "300", "700"]
+		},
+		{
+			"family": "Lobster",
+			"variants": ["regular"]
+		},
+		{
+			"family": "Arvo",
+			"variants": ["regular", "italic", "700", "700italic"]
+		},
+		{
+			"family": "PT Sans",
+			"variants": ["regular", "italic", "700", "700italic"]
+		},
+		{
+			"family": "Fira Sans",
+			"variants": ["regular", "italic", "300", "300italic", "500", "500italic", "700", "700italic"]
+		},
+		{
+			"family": "Bitter",
+			"variants": ["regular", "italic", "700"]
+		},
+		{
+			"family": "Lobster Two",
+			"variants": ["regular", "italic", "700", "700italic"]
+		},
+		{
+			"family": "Merriweather Sans",
+			"variants": ["regular", "italic", "300", "300italic", "700", "700italic", "800", "800italic"]
+		},
+		{
+			"family": "Cabin Condensed",
+			"variants": ["regular", "500", "600", "700"]
+		},
+		{
+			"family": "Lato Latin",
+			"variants": [
+				"100",
+				"100italic",
+				"300",
+				"300italic",
+				"regular",
+				"italic",
+				"700",
+				"700italic",
+				"900",
+				"900italic"
+			]
+		},
+		{
+			"family": "Source Code Pro",
+			"variants": ["regular", "200", "300", "500", "600", "700", "900"]
+		},
+		{
+			"family": "Inconsolata",
+			"variants": ["regular", "700"]
+		},
+		{
+			"family": "Nunito",
+			"variants": [
+				"regular",
+				"italic",
+				"200",
+				"200italic",
+				"300",
+				"300italic",
+				"600",
+				"600italic",
+				"700",
+				"700italic",
+				"800",
+				"800italic",
+				"900",
+				"900italic"
+			]
+		},
+		{
+			"family": "PT Serif",
+			"variants": ["regular", "italic", "700", "700italic"]
+		},
+		{
+			"family": "Cabin Sketch",
+			"variants": ["regular", "700"]
+		},
+		{
+			"family": "Righteous",
+			"variants": ["regular"]
+		},
+		{
+			"family": "Amatic SC",
+			"variants": ["regular", "700"]
+		},
+		{
+			"family": "Droid Sans",
+			"variants": ["regular", "700"]
+		},
+		{
+			"family": "Fira Mono",
+			"variants": ["regular", "500", "700"]
+		},
+		{
+			"family": "Quattrocento",
+			"variants": ["regular", "700"]
+		},
+		{
+			"family": "Archivo Black",
+			"variants": ["regular"]
+		},
+		{
+			"family": "PT Sans Narrow",
+			"variants": ["regular", "700"]
+		},
+		{
+			"family": "Pacifico Latin",
+			"variants": ["regular"]
+		}
+	]
+}
