@@ -13,10 +13,7 @@
 				" />
 		</div>
 		<div class="flex flex-col gap-3">
-			<CollapsibleSection
-				:sectionName="section.name"
-				v-for="section in filteredSections"
-				:sectionCollapsed="section.collapsed">
+			<CollapsibleSection :sectionName="section.name" v-for="section in filteredSections">
 				<template v-for="property in getFilteredProperties(section)">
 					<component :is="property.component" v-bind="property.getProps()" v-on="property.events || {}">
 						{{ property.innerText || "" }}
@@ -30,13 +27,11 @@
 	</div>
 </template>
 <script setup lang="ts">
-import { webPages } from "@/data/webPage";
 import useStore from "@/store";
-import { BuilderPage } from "@/types/Builder/BuilderPage";
 import blockController from "@/utils/blockController";
 import { setFont as _setFont, fontListNames, getFontWeightOptions } from "@/utils/fontManager";
 import { Button, createResource } from "frappe-ui";
-import { Ref, computed, nextTick, ref } from "vue";
+import { Ref, computed, ref } from "vue";
 import { toast } from "vue-sonner";
 import BackgroundHandler from "./BackgroundHandler.vue";
 import BlockFlexLayoutHandler from "./BlockFlexLayoutHandler.vue";
@@ -74,7 +69,6 @@ type PropertySection = {
 	name: string;
 	properties: BlockProperty[];
 	condition?: () => boolean;
-	collapsed?: boolean;
 };
 
 const searchInput = ref(null) as Ref<HTMLElement | null>;
@@ -117,76 +111,6 @@ const setClasses = (val: string) => {
 	const classes = val.split(",").map((c) => c.trim());
 	blockController.setClasses(classes);
 };
-
-const linkSectionProperties = [
-	{
-		component: InlineInput,
-		getProps: () => {
-			return {
-				label: "Link To",
-				type: "autocomplete",
-				showInputAsOption: true,
-				options: webPages.data
-					.filter((page: BuilderPage) => {
-						return page.route && !page.dynamic_route;
-					})
-					.map((page: BuilderPage) => {
-						return {
-							value: `/${page.route}`,
-							label: `/${page.route}`,
-						};
-					}),
-				modelValue: blockController.getAttribute("href"),
-			};
-		},
-		searchKeyWords: "Link, Href, URL",
-		events: {
-			"update:modelValue": async (val: string) => {
-				if (val && !blockController.isLink()) {
-					blockController.convertToLink();
-					await nextTick();
-					await nextTick();
-				}
-				if (!val && blockController.isLink()) {
-					blockController.unsetLink();
-				} else {
-					blockController.setAttribute("href", val);
-				}
-			},
-		},
-	},
-	{
-		component: InlineInput,
-		getProps: () => {
-			return {
-				label: "Opens in",
-				type: "select",
-				options: [
-					{
-						value: "_self",
-						label: "Same Tab",
-					},
-					{
-						value: "_blank",
-						label: "New Tab",
-					},
-				],
-				modelValue: blockController.getAttribute("target") || "_self",
-			};
-		},
-		searchKeyWords: "Link, Target, Opens in, OpensIn, Opens In, New Tab",
-		events: {
-			"update:modelValue": (val: string) => {
-				if (val === "_self") {
-					blockController.removeAttribute("target");
-				} else {
-					blockController.setAttribute("target", val);
-				}
-			},
-		},
-		condition: () => blockController.getAttribute("href"),
-	},
-];
 
 const typographySectionProperties = [
 	{
@@ -696,6 +620,45 @@ const optionsSectionProperties = [
 		component: InlineInput,
 		getProps: () => {
 			return {
+				label: "Link",
+				modelValue: blockController.getAttribute("href"),
+			};
+		},
+		searchKeyWords: "Link, Href, URL",
+		events: {
+			"update:modelValue": (val: string) => blockController.setAttribute("href", val),
+		},
+		condition: () => blockController.isLink(),
+	},
+	{
+		component: InlineInput,
+		getProps: () => {
+			return {
+				label: "Opens in",
+				type: "select",
+				options: [
+					{
+						value: "_self",
+						label: "Same Tab",
+					},
+					{
+						value: "_blank",
+						label: "New Tab",
+					},
+				],
+				modelValue: blockController.getAttribute("target"),
+			};
+		},
+		searchKeyWords: "Link, Target, Opens in, OpensIn, Opens In, New Tab",
+		events: {
+			"update:modelValue": (val: string) => blockController.setAttribute("target", val),
+		},
+		condition: () => blockController.isLink(),
+	},
+	{
+		component: InlineInput,
+		getProps: () => {
+			return {
 				label: "Image URL",
 				modelValue: blockController.getAttribute("src"),
 			};
@@ -1140,12 +1103,6 @@ const videoOptionsSectionProperties = [
 
 const sections = [
 	{
-		name: "Link",
-		properties: linkSectionProperties,
-		collapsed: computed(() => !blockController.isLink()),
-		condition: () => !blockController.multipleBlocksSelected(),
-	},
-	{
 		name: "Layout",
 		properties: layoutSectionProperties,
 		condition: () => !blockController.multipleBlocksSelected(),
@@ -1173,19 +1130,10 @@ const sections = [
 		name: "Position",
 		properties: positionSectionProperties,
 		condition: () => !blockController.multipleBlocksSelected(),
-		collapsed: computed(() => {
-			return (
-				!blockController.getStyle("top") &&
-				!blockController.getStyle("right") &&
-				!blockController.getStyle("bottom") &&
-				!blockController.getStyle("left")
-			);
-		}),
 	},
 	{
 		name: "Spacing",
 		properties: spacingSectionProperties,
-		collapsed: computed(() => !blockController.getStyle("margin") && !blockController.getStyle("padding")),
 	},
 	{
 		name: "Options",
@@ -1194,23 +1142,14 @@ const sections = [
 	{
 		name: "Data Key",
 		properties: dataKeySectionProperties,
-		collapsed: computed(() => {
-			return !blockController.getDataKey("key");
-		}),
 	},
 	{
 		name: "HTML Attributes",
 		properties: customAttributesSectionProperties,
-		collapsed: computed(() => {
-			return Object.keys(blockController.getCustomAttributes()).length === 0;
-		}),
 	},
 	{
 		name: "Raw Style",
 		properties: rawStyleSectionProperties,
-		collapsed: computed(() => {
-			return Object.keys(blockController.getRawStyles()).length === 0;
-		}),
 	},
 ] as PropertySection[];
 </script>

@@ -3,13 +3,10 @@
 
 frappe.ui.form.on("Builder Page", {
   refresh(frm) {
-    // only show in developer mode
-    if (frappe.boot.developer_mode || !frm.doc.is_template) {
-      frm.sidebar
-        .add_user_action(__("Open in Builder"))
-        .attr("href", `/builder/page/${frm.doc.name}`)
-        .attr("target", "_blank");
-    }
+    frm.sidebar
+      .add_user_action(__("Open in Builder"))
+      .attr("href", `/builder/page/${frm.doc.name}`)
+      .attr("target", "_blank");
   },
   onload(frm) {
     frm.set_df_property("blocks", "wrap", true);

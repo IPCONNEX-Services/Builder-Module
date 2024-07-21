@@ -37,7 +37,7 @@ const isDark = useDark();
 </script>
 <style>
 [id^="headlessui-dialog"] {
-	@apply z-50;
+	@apply z-30;
 }
 
 [id^="headlessui-dialog-panel"] {
@@ -45,7 +45,7 @@ const isDark = useDark();
 }
 
 [id^="headlessui-dialog-panel"] > div,
-[id^="headlessui-dialog-panel"] .space-y-4 > p {
+[id^="headlessui-dialog-panel"] p {
 	@apply dark:bg-zinc-800;
 	@apply dark:text-zinc-50;
 }
@@ -96,8 +96,7 @@ const isDark = useDark();
 	@apply dark:bg-black-overlay-800;
 }
 
-[id^="headlessui-menu-items"],
-[id^="headlessui-combobox-options"] {
+[id^="headlessui-menu-items"] {
 	@apply dark:bg-zinc-800;
 	@apply overflow-y-auto;
 	-ms-overflow-style: none; /* IE and Edge */
@@ -115,22 +114,9 @@ const isDark = useDark();
 	display: none;
 }
 
-[id^="headlessui-menu-items"] button,
-[id^="headlessui-combobox-options"] li {
+[id^="headlessui-menu-items"] button {
 	@apply dark:text-zinc-200;
 	@apply dark:hover:bg-zinc-700;
-	@apply dark:rounded;
-	@apply break-all;
-}
-
-[data-headlessui-state~="active"] li {
-	@apply dark:bg-zinc-600;
-	@apply dark:text-zinc-200;
-}
-
-[data-headlessui-state="selected"] li {
-	@apply dark:bg-zinc-700;
-	@apply dark:text-zinc-200;
 }
 
 [id^="headlessui-menu-items"] button svg {

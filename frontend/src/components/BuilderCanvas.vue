@@ -56,7 +56,6 @@
 				<BuilderBlock
 					class="h-full min-h-[inherit]"
 					:block="block"
-					:key="block.blockId"
 					v-if="showBlocks"
 					:breakpoint="breakpoint.device"
 					:data="store.pageData" />
@@ -73,7 +72,6 @@
 	</div>
 </template>
 <script setup lang="ts">
-import builderBlockTemplate from "@/data/builderBlockTemplate";
 import webComponent from "@/data/webComponent";
 import Block from "@/utils/block";
 import getBlockTemplate from "@/utils/blockTemplate";
@@ -81,7 +79,6 @@ import {
 	addPxToNumber,
 	getBlockCopy,
 	getBlockInstance,
-	getBlockObject,
 	getNumberFromPx,
 	isCtrlOrCmd,
 	isTargetEditable,
@@ -96,7 +93,6 @@ import {
 } from "@vueuse/core";
 import { FeatherIcon } from "frappe-ui";
 import { Ref, computed, nextTick, onMounted, provide, reactive, ref, watch } from "vue";
-import { toast } from "vue-sonner";
 import useStore from "../store";
 import setPanAndZoom from "../utils/panAndZoom";
 import BlockSnapGuides from "./BlockSnapGuides.vue";
@@ -171,14 +167,11 @@ onMounted(() => {
 
 function setupHistory() {
 	canvasHistory.value = useDebouncedRefHistory(block, {
-		capacity: 50,
+		capacity: 200,
 		deep: true,
 		debounce: 200,
-		dump: (obj) => {
-			return getBlockObject(obj);
-		},
-		parse: (obj) => {
-			return getBlockInstance(obj);
+		clone: (obj) => {
+			return getBlockCopy(obj, true);
 		},
 	});
 }
@@ -192,10 +185,9 @@ const { isOverDropZone } = useDropZone(canvasContainer, {
 				parentBlock = findBlock(element.dataset.blockId) || parentBlock;
 			}
 		}
-		const componentName = ev.dataTransfer?.getData("componentName");
-		const blockTemplate = ev.dataTransfer?.getData("blockTemplate");
+		let componentName = ev.dataTransfer?.getData("componentName");
 		if (componentName) {
-			const newBlock = getBlockInstance(webComponent.getRow(componentName).block);
+			const newBlock = getBlockCopy(webComponent.getRow(componentName).block, true);
 			newBlock.extendFromComponent(componentName);
 			// if shift key is pressed, replace parent block with new block
 			if (ev.shiftKey) {
@@ -215,26 +207,6 @@ const { isOverDropZone } = useDropZone(canvasContainer, {
 				parentBlock.addChild(newBlock);
 			}
 			ev.stopPropagation();
-		} else if (blockTemplate) {
-			const templateDoc = builderBlockTemplate.getRow(blockTemplate);
-			const newBlock = getBlockInstance(templateDoc.block, false);
-			// if shift key is pressed, replace parent block with new block
-			if (ev.shiftKey) {
-				while (parentBlock && parentBlock.isChildOfComponent) {
-					parentBlock = parentBlock.getParentBlock();
-				}
-				if (!parentBlock) return;
-				const parentParentBlock = parentBlock.getParentBlock();
-				if (!parentParentBlock) return;
-				const index = parentParentBlock.children.indexOf(parentBlock);
-				parentParentBlock.children.splice(index, 1, newBlock);
-			} else {
-				while (parentBlock && !parentBlock.canHaveChildren()) {
-					parentBlock = parentBlock.getParentBlock();
-				}
-				if (!parentBlock) return;
-				parentBlock.addChild(newBlock);
-			}
 		} else if (files && files.length) {
 			store.uploadFile(files[0]).then((fileDoc: { fileURL: string; fileName: string }) => {
 				if (!parentBlock) return;
@@ -636,6 +608,30 @@ const clearSelection = () => {
 	selectedBlockIds.value = [];
 };
 
+const findParentBlock = (blockId: string, blocks?: Block[]): Block | null => {
+	if (!blocks) {
+		const firstBlock = getFirstBlock();
+		if (!firstBlock) {
+			return null;
+		}
+		blocks = [firstBlock];
+	}
+	for (const block of blocks) {
+		if (block.children) {
+			for (const child of block.children) {
+				if (child.blockId === blockId) {
+					return block;
+				}
+			}
+			const found = findParentBlock(blockId, block.children);
+			if (found) {
+				return found;
+			}
+		}
+	}
+	return null;
+};
+
 const findBlock = (blockId: string, blocks?: Block[]): Block | null => {
 	if (!blocks) {
 		blocks = [getFirstBlock()];
@@ -654,43 +650,12 @@ const findBlock = (blockId: string, blocks?: Block[]): Block | null => {
 	return null;
 };
 
-const removeBlock = (block: Block) => {
-	if (block.blockId === "root") {
-		toast.warning("Warning", {
-			description: "Cannot delete root block",
-		});
-		return;
-	}
-	if (block.isChildOfComponentBlock()) {
-		toast.warning("Warning", {
-			description: "Cannot delete block inside component",
-		});
-		return;
-	}
-	const parentBlock = block.parentBlock;
-	if (!parentBlock) {
-		return;
-	}
-	const index = parentBlock.children.indexOf(block);
-	parentBlock.removeChild(block);
-	nextTick(() => {
-		if (parentBlock.children.length) {
-			const nextSibling = parentBlock.children[index] || parentBlock.children[index - 1];
-			if (nextSibling) {
-				selectBlock(nextSibling);
-			}
-		}
-	});
-};
-
 watch(
 	() => block,
 	() => {
 		toggleDirty(true);
 	},
-	{
-		deep: true,
-	},
+	{ deep: true },
 );
 
 const toggleDirty = (dirty: boolean | null = null) => {
@@ -795,10 +760,10 @@ defineExpose({
 	clearSelection,
 	isSelected,
 	selectedBlockIds,
+	findParentBlock,
 	findBlock,
 	isDirty,
 	toggleDirty,
 	scrollBlockIntoView,
-	removeBlock,
 });
 </script>

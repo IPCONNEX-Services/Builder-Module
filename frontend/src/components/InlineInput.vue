@@ -21,7 +21,6 @@
 			:modelValue="modelValue"
 			:options="inputOptions"
 			@update:modelValue="handleChange"
-			:showInputAsOption="showInputAsOption"
 			class="w-full [&>div>select]:text-sm [&>div>select]:text-gray-800 [&>div>select]:dark:border-zinc-700 [&>div>select]:dark:bg-zinc-800 [&>div>select]:dark:text-zinc-200 [&>div>select]:dark:focus:bg-zinc-700" />
 	</div>
 </template>
@@ -69,10 +68,6 @@ const props = defineProps({
 	maxValue: {
 		type: Number,
 		default: null,
-	},
-	showInputAsOption: {
-		type: Boolean,
-		default: false,
 	},
 });
 

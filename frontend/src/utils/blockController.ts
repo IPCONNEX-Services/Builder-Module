@@ -1,7 +1,6 @@
 import useStore from "@/store";
-import { CSSProperties, nextTick } from "vue";
+import { CSSProperties } from "vue";
 import Block, { BlockDataKey } from "./block";
-import getBlockTemplate from "./blockTemplate";
 
 const store = useStore();
 
@@ -99,11 +98,6 @@ const blockController = {
 	setAttribute: (attribute: string, value: string) => {
 		store.activeCanvas?.selectedBlocks.forEach((block) => {
 			block.setAttribute(attribute, value);
-		});
-	},
-	removeAttribute: (attribute: string) => {
-		store.activeCanvas?.selectedBlocks.forEach((block) => {
-			block.removeAttribute(attribute);
 		});
 	},
 	getKeyValue: (key: "element" | "innerHTML" | "visibilityCondition") => {
@@ -263,29 +257,6 @@ const blockController = {
 			} else {
 				block.setAttribute(attribute, "");
 			}
-		});
-	},
-	convertToLink: () => {
-		blockController.getSelectedBlocks().forEach((block: Block) => {
-			if (block.isSVG() || block.isImage()) {
-				const parentBlock = block.getParentBlock();
-				if (!parentBlock) return;
-				const newBlockObj = getBlockTemplate("fit-container");
-				const newBlock = parentBlock.addChild(newBlockObj, parentBlock.getChildIndex(block));
-				newBlock.addChild(block);
-				parentBlock.removeChild(block);
-				newBlock.convertToLink();
-				nextTick(() => {
-					newBlock.selectBlock();
-				});
-			} else {
-				block.convertToLink();
-			}
-		});
-	},
-	unsetLink: () => {
-		blockController.getSelectedBlocks().forEach((block) => {
-			block.unsetLink();
 		});
 	},
 };

@@ -1,5 +1,5 @@
 import { confirmDialog } from "frappe-ui";
-import { reactive, toRaw } from "vue";
+import { reactive } from "vue";
 import Block from "./block";
 
 function getNumberFromPx(px: string | number | null | undefined): number {
@@ -245,10 +245,12 @@ function logObjectDiff(obj1: { [key: string]: {} }, obj2: { [key: string]: {} },
 	}
 }
 
-function getBlockInstance(options: BlockOptions | string, retainId = true): Block {
-	if (typeof options === "string") {
-		options = JSON.parse(options) as BlockOptions;
-	}
+function getBlockInstance(options: BlockOptions) {
+	return reactive(new Block(options));
+}
+
+function getBlockCopy(block: BlockOptions | Block, retainId = false): Block {
+	let b = JSON.parse(JSON.stringify(block));
 	if (!retainId) {
 		const deleteBlockId = (block: BlockOptions) => {
 			delete block.blockId;
@@ -256,14 +258,9 @@ function getBlockInstance(options: BlockOptions | string, retainId = true): Bloc
 				deleteBlockId(child);
 			}
 		};
-		deleteBlockId(options);
+		deleteBlockId(b);
 	}
-	return reactive(new Block(options));
-}
-
-function getBlockCopy(block: BlockOptions | Block, retainId = false): Block {
-	const b = getBlockObjectCopy(block);
-	return getBlockInstance(b, retainId);
+	return getBlockInstance(b);
 }
 
 function isCtrlOrCmd(e: KeyboardEvent) {
@@ -301,22 +298,10 @@ const detachBlockFromComponent = (block: Block) => {
 	return blockCopy;
 };
 
-function getBlockString(block: BlockOptions | Block): string {
-	return JSON.stringify(getCopyWithoutParent(block));
-}
-
-function getBlockObjectCopy(block: BlockOptions | Block): BlockOptions {
-	return JSON.parse(getBlockString(block));
-}
-
-function getCopyWithoutParent(block: BlockOptions | Block): BlockOptions {
-	const blockCopy = { ...toRaw(block) };
-	blockCopy.children = blockCopy.children?.map((child) => getCopyWithoutParent(child));
-	delete blockCopy.parentBlock;
-	return blockCopy;
-}
-
 export {
+	HSVToHex,
+	HexToHSV,
+	RGBToHex,
 	addPxToNumber,
 	confirm,
 	copyToClipboard,
@@ -324,16 +309,11 @@ export {
 	findNearestSiblingIndex,
 	getBlockCopy,
 	getBlockInstance,
-	getBlockObjectCopy as getBlockObject,
-	getBlockString,
-	getCopyWithoutParent,
 	getDataForKey,
 	getNumberFromPx,
-	getRandomColor,
 	getRGB,
+	getRandomColor,
 	getTextContent,
-	HexToHSV,
-	HSVToHex,
 	isCtrlOrCmd,
 	isHTMLString,
 	isJSONString,
@@ -342,6 +322,5 @@ export {
 	logObjectDiff,
 	mapToObject,
 	replaceMapKey,
-	RGBToHex,
 	stripExtension,
 };

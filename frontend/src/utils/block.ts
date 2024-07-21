@@ -35,8 +35,6 @@ class Block implements BlockOptions {
 	referenceBlockId?: string;
 	isRepeaterBlock?: boolean;
 	visibilityCondition?: string;
-	elementBeforeConversion?: string;
-	parentBlock: Block | null;
 	customAttributes: BlockAttributeMap;
 	constructor(options: BlockOptions) {
 		this.element = options.element;
@@ -46,7 +44,6 @@ class Block implements BlockOptions {
 		this.isChildOfComponent = options.isChildOfComponent;
 		this.referenceBlockId = options.referenceBlockId;
 		this.visibilityCondition = options.visibilityCondition;
-		this.parentBlock = options.parentBlock || null;
 
 		this.dataKey = options.dataKey || null;
 
@@ -62,7 +59,6 @@ class Block implements BlockOptions {
 			this.blockId = options.blockId;
 		}
 		this.children = (options.children || []).map((child: BlockOptions) => {
-			child.parentBlock = this;
 			return reactive(new Block(child));
 		});
 
@@ -352,7 +348,7 @@ class Block implements BlockOptions {
 		return this.originalElement === "body";
 	}
 	getTag(): string {
-		if (this.isButton() || this.isLink()) {
+		if (this.isButton() || this.isLink() || this.isInput()) {
 			return "div";
 		}
 		return this.getElement() || "div";
@@ -394,7 +390,6 @@ class Block implements BlockOptions {
 		}
 	}
 	addChild(child: BlockOptions, index?: number | null, select: boolean = true) {
-		child.parentBlock = this;
 		if (index === undefined || index === null) {
 			index = this.children.length;
 		}
@@ -424,7 +419,6 @@ class Block implements BlockOptions {
 		}
 	}
 	replaceChild(child: Block, newChild: Block) {
-		newChild.parentBlock = this;
 		const index = this.getChildIndex(child);
 		if (index > -1) {
 			this.children.splice(index, 1, newChild);
@@ -466,7 +460,12 @@ class Block implements BlockOptions {
 		});
 	}
 	getParentBlock(): Block | null {
-		return this.parentBlock || null;
+		const store = useStore();
+		if (store.activeCanvas) {
+			return store.activeCanvas.findParentBlock(this.blockId);
+		} else {
+			return null;
+		}
 	}
 	selectParentBlock() {
 		const parentBlock = this.getParentBlock();
@@ -648,15 +647,8 @@ class Block implements BlockOptions {
 		resetBlock(this, resetChildren);
 	}
 	convertToLink() {
-		this.elementBeforeConversion = this.element;
 		this.element = "a";
-	}
-	unsetLink() {
-		this.removeAttribute("href");
-		this.removeAttribute("target");
-		if (this.elementBeforeConversion) {
-			this.element = this.elementBeforeConversion;
-		}
+		this.attributes.href = "#";
 	}
 	getElement() {
 		if (this.isExtendedFromComponent()) {

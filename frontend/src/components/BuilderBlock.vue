@@ -128,10 +128,6 @@ const attributes = computed(() => {
 				attribs[props.block.getDataKey("property") as string];
 		}
 	}
-
-	if (props.block.isInput()) {
-		attribs.readonly = true;
-	}
 	return attribs;
 });
 

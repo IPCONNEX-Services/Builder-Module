@@ -137,6 +137,10 @@ import { toast } from "vue-sonner";
 import InlineInput from "./InlineInput.vue";
 import OptionToggle from "./OptionToggle.vue";
 
+type FileDoc = {
+	file_url: string;
+};
+
 const store = useStore();
 const props = defineProps<{
 	page: BuilderPage;
