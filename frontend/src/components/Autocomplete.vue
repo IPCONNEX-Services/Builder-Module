@@ -1,22 +1,24 @@
 <template>
-	<div>
+	<div class="relative">
 		<Combobox
 			:modelValue="value"
-			@update:modelValue="(val: string|{'value': string}|null) => {
-				emit('update:modelValue', val)
-			}"
+			@update:modelValue="
+				(val) => {
+					emit('update:modelValue', val);
+				}
+			"
 			v-slot="{ open }"
 			:nullable="nullable"
 			:multiple="multiple">
 			<div
-				class="form-input flex h-7 w-full items-center justify-between gap-2 rounded border-gray-400 px-2 py-1 pr-6 text-sm transition-colors dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:focus:bg-zinc-700">
+				class="form-input flex h-7 w-full items-center justify-between gap-2 rounded px-2 py-1 pr-5 text-sm transition-colors dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:focus:bg-zinc-700">
 				<!-- {{ displayValue }} -->
 				<ComboboxInput
 					autocomplete="off"
 					@change="query = $event.target.value"
 					@focus="() => open"
 					:displayValue="
-						(option) => {
+						(option: Option) => {
 							if (Array.isArray(option)) {
 								return option.map((o) => o.label).join(', ');
 							} else if (option) {
@@ -27,10 +29,10 @@
 						}
 					"
 					:placeholder="!modelValue ? placeholder : null"
-					class="h-full w-full border-none bg-transparent p-0 text-xs focus:border-none focus:ring-0" />
+					class="h-full w-full border-none bg-transparent p-0 text-base focus:border-none focus:ring-0" />
 			</div>
 			<ComboboxOptions
-				class="absolute right-0 z-50 max-h-[15rem] w-full max-w-[150px] overflow-y-auto rounded-lg bg-white px-1.5 py-1.5 shadow-2xl"
+				class="absolute right-0 z-50 max-h-[15rem] w-full overflow-y-auto rounded-lg bg-white px-1.5 py-1.5 shadow-2xl"
 				v-show="filteredOptions.length">
 				<ComboboxOption v-if="query" :value="query" class="flex items-center"></ComboboxOption>
 				<ComboboxOption
@@ -51,7 +53,7 @@
 			</ComboboxOptions>
 		</Combobox>
 		<div
-			class="absolute right-1 top-[3px] cursor-pointer p-1 text-gray-700 dark:text-zinc-300"
+			class="absolute right-[1px] top-[3px] cursor-pointer p-1 text-gray-700 dark:text-zinc-300"
 			@click="clearValue"
 			v-show="modelValue">
 			<CrossIcon />
@@ -81,6 +83,10 @@ const props = defineProps({
 		type: String,
 		default: "Search",
 	},
+	showInputAsOption: {
+		type: Boolean,
+		default: false,
+	},
 });
 
 const query = ref("");
@@ -89,27 +95,32 @@ const multiple = computed(() => Array.isArray(props.modelValue));
 const nullable = computed(() => !multiple.value);
 
 const value = computed(() => {
-	if (
-		props.modelValue instanceof String ||
-		typeof props.modelValue === "string" ||
-		props.modelValue instanceof Number ||
-		typeof props.modelValue === "number"
-	) {
-		return { label: props.modelValue, value: props.modelValue };
-	} else {
-		return props.modelValue;
-	}
+	return (
+		props.options.find((option) => option.value === props.modelValue) || {
+			label: props.modelValue,
+			value: props.modelValue,
+		}
+	);
 }) as ComputedRef<Option>;
 
 const filteredOptions = computed(() => {
-	return query.value === ""
-		? props.options
-		: props.options.filter((option) => {
-				return (
-					option.label.toLowerCase().includes(query.value.toLowerCase()) ||
-					option.value.toLowerCase().includes(query.value.toLowerCase())
-				);
-		  });
+	if (query.value === "") {
+		return props.options;
+	} else {
+		const options = props.options.filter((option) => {
+			return (
+				option.label.toLowerCase().includes(query.value.toLowerCase()) ||
+				option.value.toLowerCase().includes(query.value.toLowerCase())
+			);
+		});
+		if (props.showInputAsOption) {
+			options.unshift({
+				label: query.value,
+				value: query.value,
+			});
+		}
+		return options;
+	}
 });
 
 const clearValue = () => emit("update:modelValue", null);

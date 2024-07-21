@@ -4,16 +4,14 @@
 		<div>
 			<BuilderLeftPanel
 				v-show="store.showLeftPanel"
-				class="no-scrollbar absolute bottom-0 left-0 top-[var(--toolbar-height)] z-20 overflow-auto border-r-[1px] bg-white dark:border-gray-800 dark:bg-zinc-900"></BuilderLeftPanel>
+				class="no-scrollbar absolute bottom-0 left-0 top-[var(--toolbar-height)] z-20 overflow-auto border-r-[1px] bg-white shadow-lg dark:border-gray-800 dark:bg-zinc-900"></BuilderLeftPanel>
 			<BuilderCanvas
-				ref="componentCanvas"
-				:key="store.editingComponent"
-				v-if="store.editingComponent"
-				:block-data="store.getComponentBlock(store.editingComponent)"
+				ref="fragmentCanvas"
+				:key="store.fragmentData.block?.blockId"
+				v-if="store.editingMode === 'fragment' && store.fragmentData.block"
+				:block-data="store.fragmentData.block"
 				:canvas-styles="{
-					width: (store.getComponentBlock(store.editingComponent).getStyle('width') + '').endsWith('px')
-						? '!fit-content'
-						: null,
+					width: (store.fragmentData.block.getStyle('width') + '').endsWith('px') ? '!fit-content' : null,
 					padding: '40px',
 				}"
 				:style="{
@@ -25,25 +23,20 @@
 					<div
 						class="absolute left-0 right-0 top-0 z-20 flex items-center justify-between bg-white p-2 text-sm text-gray-800 dark:bg-zinc-900 dark:text-zinc-400">
 						<div class="flex items-center gap-1 text-xs">
-							<a @click="store.editPage(false)" class="cursor-pointer">Page</a>
+							<a @click="store.exitFragmentMode" class="cursor-pointer">Page</a>
 							<FeatherIcon name="chevron-right" class="h-3 w-3" />
-							{{ store.getComponent(store.editingComponent).component_name }}
+							{{ store.fragmentData.fragmentName }}
 						</div>
 						<Button
 							class="text-xs dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
-							@click="
-								() => {
-									store.editPage(true);
-									clearSelectedComponent();
-								}
-							">
-							Save Component
+							@click="saveAndExitFragmentMode">
+							{{ store.fragmentData.saveActionLabel || "Save" }}
 						</Button>
 					</div>
 				</template>
 			</BuilderCanvas>
 			<BuilderCanvas
-				v-show="!store.editingComponent"
+				v-show="store.editingMode === 'page'"
 				ref="pageCanvas"
 				v-if="store.pageBlocks[0]"
 				:block-data="store.pageBlocks[0]"
@@ -57,7 +50,7 @@
 				class="canvas-container absolute bottom-0 top-[var(--toolbar-height)] flex justify-center overflow-hidden bg-gray-200 p-10 dark:bg-zinc-800"></BuilderCanvas>
 			<BuilderRightPanel
 				v-show="store.showRightPanel"
-				class="no-scrollbar absolute bottom-0 right-0 top-[var(--toolbar-height)] z-20 overflow-auto border-l-[1px] bg-white dark:border-gray-800 dark:bg-zinc-900"></BuilderRightPanel>
+				class="no-scrollbar absolute bottom-0 right-0 top-[var(--toolbar-height)] z-20 overflow-auto border-l-[1px] bg-white shadow-lg dark:border-gray-800 dark:bg-zinc-900"></BuilderRightPanel>
 			<Dialog
 				style="z-index: 40"
 				v-model="store.showHTMLDialog"
@@ -75,7 +68,6 @@
 						@update:modelValue="
 							(val) => {
 								store.editableBlock?.setInnerHTML(val);
-								store.editableBlock = null;
 							}
 						"
 						required />
@@ -91,9 +83,11 @@ import BuilderLeftPanel from "@/components/BuilderLeftPanel.vue";
 import BuilderRightPanel from "@/components/BuilderRightPanel.vue";
 import BuilderToolbar from "@/components/BuilderToolbar.vue";
 import { webPages } from "@/data/webPage";
+import { sessionUser } from "@/router";
 import useStore from "@/store";
 import { BuilderComponent } from "@/types/Builder/BuilderComponent";
 import { BuilderPage } from "@/types/Builder/BuilderPage";
+import { getUsersInfo } from "@/usersInfo";
 import Block, { styleProperty } from "@/utils/block";
 import blockController from "@/utils/blockController";
 import getBlockTemplate from "@/utils/blockTemplate";
@@ -102,14 +96,15 @@ import {
 	copyToClipboard,
 	detachBlockFromComponent,
 	getBlockCopy,
+	getCopyWithoutParent,
 	isCtrlOrCmd,
 	isHTMLString,
 	isJSONString,
 	isTargetEditable,
 } from "@/utils/helpers";
-import { useActiveElement, useDebounceFn, useEventListener, useMagicKeys } from "@vueuse/core";
+import { useActiveElement, useDebounceFn, useEventListener, useMagicKeys, useStorage } from "@vueuse/core";
 import { Dialog } from "frappe-ui";
-import { computed, nextTick, onActivated, provide, ref, watch, watchEffect } from "vue";
+import { Ref, computed, onActivated, onDeactivated, provide, ref, watch, watchEffect } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { toast } from "vue-sonner";
 import CodeEditor from "../components/CodeEditor.vue";
@@ -129,10 +124,10 @@ window.store = store;
 window.blockController = blockController;
 
 const pageCanvas = ref<InstanceType<typeof BuilderCanvas> | null>(null);
-const componentCanvas = ref<InstanceType<typeof BuilderCanvas> | null>(null);
+const fragmentCanvas = ref<InstanceType<typeof BuilderCanvas> | null>(null);
 
 provide("pageCanvas", pageCanvas);
-provide("componentCanvas", componentCanvas);
+provide("fragmentCanvas", fragmentCanvas);
 
 // to disable page zoom
 useEventListener(
@@ -145,7 +140,7 @@ useEventListener(
 			return;
 		}
 	},
-	{ passive: false }
+	{ passive: false },
 );
 
 useEventListener(document, "copy", (e) => {
@@ -166,7 +161,7 @@ useEventListener(document, "copy", (e) => {
 			if (!Boolean(block.extendedFromComponent) && block.isChildOfComponent) {
 				return detachBlockFromComponent(block);
 			}
-			return block;
+			return getCopyWithoutParent(block);
 		});
 		// just copy non components
 		const dataToCopy = {
@@ -247,6 +242,12 @@ useEventListener(document, "paste", async (e) => {
 			block = getBlockTemplate("html");
 
 			if (text.startsWith("<svg")) {
+				if (text.includes("<image")) {
+					toast.warning("Warning", {
+						description: "SVG with inlined image in it is not supported. Please paste it as PNG instead.",
+					});
+					return;
+				}
 				const dom = new DOMParser().parseFromString(text, "text/html");
 				const svg = dom.body.querySelector("svg") as SVGElement;
 				const width = svg.getAttribute("width") || "100";
@@ -281,7 +282,7 @@ useEventListener(document, "paste", async (e) => {
 		const styleObj = strippedText.split(";").reduce((acc: BlockStyleMap, curr) => {
 			const [key, value] = curr.split(":").map((item) => (item ? item.trim() : "")) as [
 				styleProperty,
-				StyleValue
+				StyleValue,
 			];
 			if (blockController.isText()) {
 				if (
@@ -432,7 +433,7 @@ useEventListener(document, "keydown", (e) => {
 
 const activeElement = useActiveElement();
 const notUsingInput = computed(
-	() => activeElement.value?.tagName !== "INPUT" && activeElement.value?.tagName !== "TEXTAREA"
+	() => activeElement.value?.tagName !== "INPUT" && activeElement.value?.tagName !== "TEXTAREA",
 );
 
 const { space } = useMagicKeys({
@@ -465,11 +466,9 @@ useEventListener(document, "keydown", (e) => {
 	// save page or component
 	if (e.key === "s" && isCtrlOrCmd(e)) {
 		e.preventDefault();
-		if (store.editingMode === "component") {
-			store.editPage(true);
-			clearSelectedComponent();
+		if (store.editingMode === "fragment") {
+			saveAndExitFragmentMode(e);
 			e.stopPropagation();
-			e.preventDefault();
 		}
 		return;
 	}
@@ -489,7 +488,12 @@ useEventListener(document, "keydown", (e) => {
 		if (blockController.isBLockSelected() && !blockController.multipleBlocksSelected()) {
 			e.preventDefault();
 			const block = blockController.getSelectedBlocks()[0];
-			store.copiedStyle = {
+			const copiedStyle = useStorage(
+				"copiedStyle",
+				{ blockId: "", style: {} },
+				sessionStorage,
+			) as Ref<StyleCopy>;
+			copiedStyle.value = {
 				blockId: block.blockId,
 				style: block.getStylesCopy(),
 			};
@@ -507,47 +511,16 @@ useEventListener(document, "keydown", (e) => {
 	if (isTargetEditable(e)) return;
 
 	if ((e.key === "Backspace" || e.key === "Delete") && blockController.isBLockSelected()) {
-		function findBlockAndRemove(blocks: Array<Block>, blockId: string) {
-			if (blockId === "root") {
-				toast.warning("Warning", {
-					description: "Cannot delete root block",
-				});
-
-				return false;
-			}
-			blocks.forEach((block, i) => {
-				if (block.blockId === blockId) {
-					if (block.isChildOfComponentBlock() && !e.shiftKey) {
-						toast.warning("Warning", {
-							description: "Cannot delete block inside component",
-						});
-						return false;
-					} else {
-						blocks.splice(i, 1);
-						nextTick(() => {
-							// select the next sibling block
-							if (blocks.length && blocks[i]) {
-								blocks[i].selectBlock();
-							}
-						});
-						return true;
-					}
-				} else if (block.children) {
-					return findBlockAndRemove(block.children, blockId);
-				}
-			});
-		}
 		for (const block of blockController.getSelectedBlocks()) {
-			findBlockAndRemove([store.activeCanvas?.getFirstBlock() as Block], block.blockId);
+			store.activeCanvas?.removeBlock(block);
 		}
-		clearSelectedComponent();
+		clearSelection();
 		e.stopPropagation();
 		return;
 	}
 
 	if (e.key === "Escape") {
-		store.editPage(false);
-		clearSelectedComponent();
+		store.exitFragmentMode(e);
 	}
 
 	// handle arrow keys
@@ -559,7 +532,7 @@ useEventListener(document, "keydown", (e) => {
 	}
 });
 
-const clearSelectedComponent = () => {
+const clearSelection = () => {
 	blockController.clearSelection();
 	store.editableBlock = null;
 	if (document.activeElement instanceof HTMLElement) {
@@ -567,7 +540,18 @@ const clearSelectedComponent = () => {
 	}
 };
 
+const saveAndExitFragmentMode = (e: Event) => {
+	store.fragmentData.saveAction?.(fragmentCanvas.value?.getFirstBlock());
+	fragmentCanvas.value?.toggleDirty(false);
+	store.exitFragmentMode(e);
+};
+
 onActivated(async () => {
+	store.realtime.on("doc_viewers", async (data) => {
+		store.viewers = await getUsersInfo(data.users.filter((user: string) => user !== sessionUser.value));
+	});
+	store.realtime.doc_subscribe("Builder Page", route.params.pageId as string);
+	store.realtime.doc_open("Builder Page", route.params.pageId as string);
 	if (route.params.pageId === store.selectedPage) {
 		return;
 	}
@@ -577,7 +561,7 @@ onActivated(async () => {
 	if (route.params.pageId && route.params.pageId !== "new") {
 		store.setPage(route.params.pageId as string);
 	} else {
-		webPages.insert
+		await webPages.insert
 			.submit({
 				page_title: "My Page",
 				draft_blocks: [store.getRootBlock()],
@@ -589,9 +573,15 @@ onActivated(async () => {
 	}
 });
 
+onDeactivated(() => {
+	store.realtime.doc_close("Builder Page", store.activePage?.name as string);
+	store.realtime.off("doc_viewers", () => {});
+	store.viewers = [];
+});
+
 // on tab activation, reload for latest data
 useEventListener(document, "visibilitychange", () => {
-	if (document.visibilityState === "visible" && !componentCanvas.value) {
+	if (document.visibilityState === "visible" && !fragmentCanvas.value) {
 		if (route.params.pageId && route.params.pageId !== "new") {
 			const currentModified = webPages.getRow(store.activePage?.name as string)?.modified;
 			webPages.fetchOne.submit(store.activePage?.name).then((doc: BuilderPage[]) => {
@@ -604,14 +594,14 @@ useEventListener(document, "visibilitychange", () => {
 });
 
 watchEffect(() => {
-	if (componentCanvas.value) {
-		store.activeCanvas = componentCanvas.value;
+	if (fragmentCanvas.value) {
+		store.activeCanvas = fragmentCanvas.value;
 	} else {
 		store.activeCanvas = pageCanvas.value;
 	}
 });
 
-const debouncedPageSave = useDebounceFn(store.savePage, 500);
+const debouncedPageSave = useDebounceFn(store.savePage, 300);
 
 watch(
 	() => pageCanvas.value?.block,
@@ -619,15 +609,16 @@ watch(
 		if (
 			store.selectedPage &&
 			!store.settingPage &&
-			!store.editingComponent &&
+			store.editingMode === "page" &&
 			!pageCanvas.value?.canvasProps?.settingCanvas
 		) {
+			store.savingPage = true;
 			debouncedPageSave();
 		}
 	},
 	{
 		deep: true,
-	}
+	},
 );
 
 watch(
@@ -636,7 +627,7 @@ watch(
 		if (!value) {
 			store.editableBlock = null;
 		}
-	}
+	},
 );
 </script>
 
@@ -645,27 +636,5 @@ watch(
 	--left-panel-width: 17rem;
 	--right-panel-width: 20rem;
 	--toolbar-height: 3.5rem;
-}
-
-[id^="headlessui-menu-items"] {
-	@apply dark:bg-zinc-800;
-}
-
-[id^="headlessui-menu-items"] button {
-	@apply dark:text-zinc-200;
-	@apply dark:hover:bg-zinc-700;
-}
-
-[id^="headlessui-menu-items"] button svg {
-	@apply dark:text-zinc-200;
-}
-
-[data-sonner-toaster] {
-	font-family: "InterVar";
-}
-
-[data-sonner-toast][data-styled="true"] {
-	@apply dark:bg-zinc-900;
-	@apply dark:border-zinc-800;
 }
 </style>

@@ -19,6 +19,10 @@ export interface BuilderPage{
 	route?: string
 	/**	Dynamic Route : Check - Map route parameters into form variables. Example <code>/profile/&lt;user&gt;</code>	*/
 	dynamic_route?: 0 | 1
+	/**	Is Template : Check	*/
+	is_template?: 0 | 1
+	/**	Template Name : Data	*/
+	template_name?: string
 	/**	Blocks : JSON	*/
 	blocks?: any
 	/**	Draft Blocks : JSON	*/
@@ -29,7 +33,7 @@ export interface BuilderPage{
 	page_data_script?: string
 	/**	Client Scripts : Table MultiSelect - Builder Page Client Script	*/
 	client_scripts?: BuilderPageClientScript[]
-	/**	Page Preview : Attach Image	*/
+	/**	Page Preview : Data	*/
 	preview?: string
 	/**	Favicon : Attach Image - An icon file with .ico extension. Should be 16 x 16 px.
 You can generate using favicon-generator.org	*/

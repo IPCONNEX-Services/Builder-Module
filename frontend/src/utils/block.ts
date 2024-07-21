@@ -6,9 +6,11 @@ import { addPxToNumber, getBlockCopy, getNumberFromPx, getTextContent, kebabToCa
 
 export type styleProperty = keyof CSSProperties;
 
+type BlockDataKeyType = "key" | "attribute" | "style";
+
 export interface BlockDataKey {
 	key?: string;
-	type?: string;
+	type?: BlockDataKeyType;
 	property?: string;
 }
 
@@ -33,6 +35,8 @@ class Block implements BlockOptions {
 	referenceBlockId?: string;
 	isRepeaterBlock?: boolean;
 	visibilityCondition?: string;
+	elementBeforeConversion?: string;
+	parentBlock: Block | null;
 	customAttributes: BlockAttributeMap;
 	constructor(options: BlockOptions) {
 		this.element = options.element;
@@ -42,6 +46,7 @@ class Block implements BlockOptions {
 		this.isChildOfComponent = options.isChildOfComponent;
 		this.referenceBlockId = options.referenceBlockId;
 		this.visibilityCondition = options.visibilityCondition;
+		this.parentBlock = options.parentBlock || null;
 
 		this.dataKey = options.dataKey || null;
 
@@ -57,6 +62,7 @@ class Block implements BlockOptions {
 			this.blockId = options.blockId;
 		}
 		this.children = (options.children || []).map((child: BlockOptions) => {
+			child.parentBlock = this;
 			return reactive(new Block(child));
 		});
 
@@ -74,7 +80,7 @@ class Block implements BlockOptions {
 		if (this.isRoot()) {
 			this.blockId = "root";
 			this.draggable = false;
-			this.setBaseStyle("minHeight", "100vh");
+			this.removeStyle("minHeight");
 		}
 	}
 	getStyles(breakpoint: string = "desktop"): BlockStyleMap {
@@ -166,6 +172,22 @@ class Block implements BlockOptions {
 	getComponentChildren() {
 		return this.getComponent()?.children || [];
 	}
+	getCustomAttributes() {
+		let customAttributes = {};
+		if (this.isExtendedFromComponent()) {
+			customAttributes = this.getComponent()?.customAttributes || {};
+		}
+		customAttributes = { ...customAttributes, ...this.customAttributes };
+		return customAttributes;
+	}
+	getRawStyles() {
+		let rawStyles = {};
+		if (this.isExtendedFromComponent()) {
+			rawStyles = this.getComponent()?.rawStyles || {};
+		}
+		rawStyles = { ...rawStyles, ...this.rawStyles };
+		return rawStyles;
+	}
 	getVisibilityCondition() {
 		let visibilityCondition = this.visibilityCondition;
 		if (this.isExtendedFromComponent() && this.getComponent()?.visibilityCondition) {
@@ -174,7 +196,7 @@ class Block implements BlockOptions {
 		return visibilityCondition;
 	}
 	getBlockDescription() {
-		if (this.isExtendedFromComponent() && !this.isChildOfComponentBlock()) {
+		if (this.extendedFromComponent) {
 			return this.getComponentBlockDescription();
 		}
 		if (this.isHTML()) {
@@ -197,18 +219,16 @@ class Block implements BlockOptions {
 		return store.getComponentName(this.extendedFromComponent as string);
 	}
 	getTextContent() {
-		let editor = this.getEditor();
-		let text = "";
-		if (this.isText() && editor) {
-			text = editor.getText();
-		}
-		return text || getTextContent(this.getInnerHTML() || "");
+		return getTextContent(this.getInnerHTML() || "");
 	}
 	isImage() {
 		return this.getElement() === "img";
 	}
 	isVideo() {
 		return this.getElement() === "video" || this.getInnerHTML()?.startsWith("<video");
+	}
+	isForm() {
+		return this.getElement() === "form";
 	}
 	isButton() {
 		return this.getElement() === "button";
@@ -221,7 +241,7 @@ class Block implements BlockOptions {
 	}
 	isText() {
 		return ["span", "h1", "p", "b", "h2", "h3", "h4", "h5", "h6", "label", "a"].includes(
-			this.getElement() as string
+			this.getElement() as string,
 		);
 	}
 	isContainer() {
@@ -270,10 +290,26 @@ class Block implements BlockOptions {
 	}
 	getStyle(style: styleProperty) {
 		const store = useStore();
+		let styleValue = undefined as StyleValue;
 		if (store.activeBreakpoint === "mobile") {
-			return this.mobileStyles[style] || this.tabletStyles[style] || this.baseStyles[style];
+			styleValue = this.mobileStyles[style] || this.tabletStyles[style] || this.baseStyles[style];
 		} else if (store.activeBreakpoint === "tablet") {
-			return this.tabletStyles[style] || this.baseStyles[style];
+			styleValue = this.tabletStyles[style] || this.baseStyles[style];
+		} else {
+			styleValue = this.baseStyles[style];
+		}
+		if (styleValue === undefined && this.isExtendedFromComponent()) {
+			styleValue = this.getComponent()?.getStyle(style) as StyleValue;
+		}
+		return styleValue;
+	}
+	getNativeStyle(style: styleProperty) {
+		const store = useStore();
+		if (store.activeBreakpoint === "mobile") {
+			return this.mobileStyles[style];
+		}
+		if (store.activeBreakpoint === "tablet") {
+			return this.tabletStyles[style];
 		}
 		return this.baseStyles[style];
 	}
@@ -298,13 +334,16 @@ class Block implements BlockOptions {
 				return "columns";
 			case this.isContainer() && this.isColumn():
 				return "credit-card";
+			case this.isGrid():
+				return "grid";
 			case this.isContainer():
 				return "square";
 			case this.isImage():
 				return "image";
 			case this.isVideo():
 				return "film";
-
+			case this.isForm():
+				return "file-text";
 			default:
 				return "square";
 		}
@@ -355,6 +394,7 @@ class Block implements BlockOptions {
 		}
 	}
 	addChild(child: BlockOptions, index?: number | null, select: boolean = true) {
+		child.parentBlock = this;
 		if (index === undefined || index === null) {
 			index = this.children.length;
 		}
@@ -384,6 +424,7 @@ class Block implements BlockOptions {
 		}
 	}
 	replaceChild(child: Block, newChild: Block) {
+		newChild.parentBlock = this;
 		const index = this.getChildIndex(child);
 		if (index > -1) {
 			this.children.splice(index, 1, newChild);
@@ -425,17 +466,41 @@ class Block implements BlockOptions {
 		});
 	}
 	getParentBlock(): Block | null {
-		const store = useStore();
-		if (store.activeCanvas) {
-			return store.activeCanvas.findParentBlock(this.blockId);
-		} else {
-			return null;
+		return this.parentBlock || null;
+	}
+	selectParentBlock() {
+		const parentBlock = this.getParentBlock();
+		if (parentBlock) {
+			parentBlock.selectBlock();
+		}
+	}
+	getSiblingBlock(direction: "next" | "previous") {
+		const parentBlock = this.getParentBlock();
+		let sibling = null as Block | null;
+		if (parentBlock) {
+			const index = parentBlock.getChildIndex(this);
+			if (direction === "next") {
+				sibling = parentBlock.children[index + 1];
+			} else {
+				sibling = parentBlock.children[index - 1];
+			}
+			if (sibling) {
+				return sibling;
+			}
+		}
+		return null;
+	}
+	selectSiblingBlock(direction: "next" | "previous") {
+		const sibling = this.getSiblingBlock(direction);
+		if (sibling) {
+			sibling.selectBlock();
 		}
 	}
 	canHaveChildren(): boolean {
 		return !(
 			this.isImage() ||
 			this.isSVG() ||
+			this.isInput() ||
 			this.isVideo() ||
 			(this.isText() && !this.isLink()) ||
 			this.isExtendedFromComponent()
@@ -467,19 +532,20 @@ class Block implements BlockOptions {
 	getTextColor() {
 		const editor = this.getEditor();
 		const color = editor?.getAttributes("textStyle").color;
-		if (this.isText() && editor && editor.isFocused) {
+		if (this.isText() && editor && color && editor.isEditable) {
 			return color;
 		} else {
 			return this.getStyle("color");
 		}
 	}
 	getEditor(): null | Editor {
-		return null;
+		// @ts-ignore
+		return this.__proto__.editor || null;
 	}
 	setTextColor(color: string) {
 		const editor = this.getEditor();
 		if (this.isText() && editor && editor.isEditable) {
-			editor.chain().focus().setColor(color).run();
+			editor.chain().setColor(color).run();
 		} else {
 			this.setStyle("color", color);
 		}
@@ -528,7 +594,7 @@ class Block implements BlockOptions {
 		}
 		return dataKey;
 	}
-	setDataKey(key: keyof BlockDataKey, value: string) {
+	setDataKey(key: keyof BlockDataKey, value: BlockDataKeyType) {
 		if (!this.dataKey) {
 			this.dataKey = {
 				key: "",
@@ -582,8 +648,15 @@ class Block implements BlockOptions {
 		resetBlock(this, resetChildren);
 	}
 	convertToLink() {
+		this.elementBeforeConversion = this.element;
 		this.element = "a";
-		this.attributes.href = "#";
+	}
+	unsetLink() {
+		this.removeAttribute("href");
+		this.removeAttribute("target");
+		if (this.elementBeforeConversion) {
+			this.element = this.elementBeforeConversion;
+		}
 	}
 	getElement() {
 		if (this.isExtendedFromComponent()) {
@@ -613,6 +686,9 @@ class Block implements BlockOptions {
 	isFlex() {
 		return this.getStyle("display") === "flex";
 	}
+	isGrid() {
+		return this.getStyle("display") === "grid";
+	}
 	isRow() {
 		return this.isFlex() && this.getStyle("flexDirection") === "row";
 	}
@@ -620,6 +696,9 @@ class Block implements BlockOptions {
 		return this.isFlex() && this.getStyle("flexDirection") === "column";
 	}
 	duplicateBlock() {
+		if (this.isRoot()) {
+			return;
+		}
 		const store = useStore();
 		store.activeCanvas?.history.pause();
 		const blockCopy = getBlockCopy(this);
@@ -777,15 +856,20 @@ class Block implements BlockOptions {
 function extendWithComponent(
 	block: Block | BlockOptions,
 	extendedFromComponent: string | undefined,
-	componentChildren: Block[]
+	componentChildren: Block[],
+	resetOverrides: boolean = true,
 ) {
-	resetBlock(block);
+	resetBlock(block, true, resetOverrides);
 	block.children?.forEach((child, index) => {
 		child.isChildOfComponent = extendedFromComponent;
 		let componentChild = componentChildren[index];
-		if (componentChild) {
+		if (child.extendedFromComponent) {
+			const component = child.getComponent();
 			child.referenceBlockId = componentChild.blockId;
-			extendWithComponent(child, extendedFromComponent, componentChild.children);
+			extendWithComponent(child, child.extendedFromComponent, component.children, false);
+		} else if (componentChild) {
+			child.referenceBlockId = componentChild.blockId;
+			extendWithComponent(child, extendedFromComponent, componentChild.children, resetOverrides);
 		}
 	});
 }
@@ -793,16 +877,22 @@ function extendWithComponent(
 function resetWithComponent(
 	block: Block | BlockOptions,
 	extendedWithComponent: string,
-	componentChildren: Block[]
+	componentChildren: Block[],
+	resetOverrides: boolean = true,
 ) {
-	resetBlock(block);
+	resetBlock(block, true, resetOverrides);
 	block.children?.splice(0, block.children.length);
 	componentChildren.forEach((componentChild) => {
 		const blockComponent = getBlockCopy(componentChild);
 		blockComponent.isChildOfComponent = extendedWithComponent;
 		blockComponent.referenceBlockId = componentChild.blockId;
 		const childBlock = block.addChild(blockComponent, null, false);
-		resetWithComponent(childBlock, extendedWithComponent, componentChild.children);
+		if (componentChild.extendedFromComponent) {
+			const component = childBlock.getComponent();
+			resetWithComponent(childBlock, componentChild.extendedFromComponent, component.children, false);
+		} else {
+			resetWithComponent(childBlock, extendedWithComponent, componentChild.children, resetOverrides);
+		}
 	});
 }
 
@@ -810,7 +900,7 @@ function syncBlockWithComponent(
 	parentBlock: Block,
 	block: Block,
 	componentName: string,
-	componentChildren: Block[]
+	componentChildren: Block[],
 ) {
 	componentChildren.forEach((componentChild, index) => {
 		const blockExists = findComponentBlock(componentChild.blockId, parentBlock.children);
@@ -847,22 +937,28 @@ function findComponentBlock(blockId: string, blocks: Block[]): Block | null {
 	return null;
 }
 
-function resetBlock(block: Block | BlockOptions, resetChildren: boolean = true) {
+function resetBlock(
+	block: Block | BlockOptions,
+	resetChildren: boolean = true,
+	resetOverrides: boolean = true,
+) {
 	block = markRaw(block);
-	delete block.innerHTML;
-	delete block.element;
 	block.blockId = block.generateId();
-	block.baseStyles = {};
-	block.rawStyles = {};
-	block.mobileStyles = {};
-	block.tabletStyles = {};
-	block.attributes = {};
-	block.customAttributes = {};
-	block.classes = [];
+	if (resetOverrides) {
+		delete block.innerHTML;
+		delete block.element;
+		block.baseStyles = {};
+		block.rawStyles = {};
+		block.mobileStyles = {};
+		block.tabletStyles = {};
+		block.attributes = {};
+		block.customAttributes = {};
+		block.classes = [];
+	}
 
 	if (resetChildren) {
 		block.children?.forEach((child) => {
-			resetBlock(child, resetChildren);
+			resetBlock(child, resetChildren, !Boolean(child.extendedFromComponent));
 		});
 	}
 }

@@ -12,9 +12,11 @@
   "content_tab",
   "published",
   "page_name",
-  "column_break_ymjg",
   "route",
   "dynamic_route",
+  "column_break_ymjg",
+  "is_template",
+  "template_name",
   "section_break_ujsp",
   "blocks",
   "draft_blocks",
@@ -46,7 +48,8 @@
    "ignore_xss_filter": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "Route"
+   "label": "Route",
+   "search_index": 1
   },
   {
    "default": "0",
@@ -63,14 +66,16 @@
   },
   {
    "fieldname": "preview",
-   "fieldtype": "Attach Image",
+   "fieldtype": "Data",
    "label": "Page Preview",
+   "options": "URL",
    "read_only": 1
   },
   {
    "fieldname": "page_title",
    "fieldtype": "Data",
-   "label": "Title"
+   "label": "Title",
+   "search_index": 1
   },
   {
    "fieldname": "scripting_tab",
@@ -138,6 +143,19 @@
    "options": "Builder Page Client Script"
   },
   {
+   "default": "0",
+   "fieldname": "is_template",
+   "fieldtype": "Check",
+   "label": "Is Template"
+  },
+  {
+   "depends_on": "is_template",
+   "fieldname": "template_name",
+   "fieldtype": "Data",
+   "label": "Template Name",
+   "mandatory_depends_on": "is_template"
+  },
+  {
    "fieldname": "section_break_shab",
    "fieldtype": "Section Break"
   },
@@ -158,7 +176,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-05-16 17:14:40.848275",
+ "modified": "2024-07-02 18:13:15.327787",
  "modified_by": "Administrator",
  "module": "Builder",
  "name": "Builder Page",

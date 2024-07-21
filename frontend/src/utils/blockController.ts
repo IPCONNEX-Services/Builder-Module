@@ -1,6 +1,7 @@
 import useStore from "@/store";
-import { CSSProperties } from "vue";
+import { CSSProperties, nextTick } from "vue";
 import Block, { BlockDataKey } from "./block";
+import getBlockTemplate from "./blockTemplate";
 
 const store = useStore();
 
@@ -19,6 +20,12 @@ const blockController = {
 	isRoot() {
 		return blockController.isBLockSelected() && blockController.getFirstSelectedBlock().isRoot();
 	},
+	isFlex() {
+		return blockController.isBLockSelected() && blockController.getFirstSelectedBlock().isFlex();
+	},
+	isGrid() {
+		return blockController.isBLockSelected() && blockController.getFirstSelectedBlock().isGrid();
+	},
 	setStyle: (style: styleProperty, value: StyleValue) => {
 		store.activeCanvas?.selectedBlocks.forEach((block) => {
 			block.setStyle(style, value);
@@ -35,6 +42,17 @@ const blockController = {
 			if (styleValue === "__initial__") {
 				styleValue = block.getStyle(style);
 			} else if (styleValue !== block.getStyle(style)) {
+				styleValue = "Mixed";
+			}
+		});
+		return styleValue;
+	},
+	getNativeStyle: (style: styleProperty) => {
+		let styleValue = "__initial__" as StyleValue;
+		store.activeCanvas?.selectedBlocks.forEach((block) => {
+			if (styleValue === "__initial__") {
+				styleValue = block.getNativeStyle(style);
+			} else if (styleValue !== block.getNativeStyle(style)) {
 				styleValue = "Mixed";
 			}
 		});
@@ -83,6 +101,11 @@ const blockController = {
 			block.setAttribute(attribute, value);
 		});
 	},
+	removeAttribute: (attribute: string) => {
+		store.activeCanvas?.selectedBlocks.forEach((block) => {
+			block.removeAttribute(attribute);
+		});
+	},
 	getKeyValue: (key: "element" | "innerHTML" | "visibilityCondition") => {
 		let keyValue = "__initial__" as StyleValue | undefined;
 		store.activeCanvas?.selectedBlocks.forEach((block) => {
@@ -116,7 +139,7 @@ const blockController = {
 		block.classes = classes;
 	},
 	getRawStyles: () => {
-		return blockController.isBLockSelected() && blockController.getFirstSelectedBlock().rawStyles;
+		return blockController.isBLockSelected() && blockController.getFirstSelectedBlock().getRawStyles();
 	},
 	setRawStyles: (rawStyles: BlockStyleMap) => {
 		store.activeCanvas?.selectedBlocks.forEach((block) => {
@@ -129,7 +152,7 @@ const blockController = {
 		});
 	},
 	getCustomAttributes: () => {
-		return blockController.isBLockSelected() && blockController.getFirstSelectedBlock().customAttributes;
+		return blockController.isBLockSelected() && blockController.getFirstSelectedBlock().getCustomAttributes();
 	},
 	setCustomAttributes: (customAttributes: BlockAttributeMap) => {
 		store.activeCanvas?.selectedBlocks.forEach((block) => {
@@ -142,7 +165,7 @@ const blockController = {
 		});
 	},
 	getParentBlock: () => {
-		return store.activeCanvas?.selectedBlocks[0]?.getParentBlock() || store.activeCanvas?.getFirstBlock();
+		return store.activeCanvas?.selectedBlocks[0]?.getParentBlock();
 	},
 	setTextColor: (color: string) => {
 		store.activeCanvas?.selectedBlocks.forEach((block) => {
@@ -202,16 +225,36 @@ const blockController = {
 		return blockController.isBLockSelected() && blockController.getFirstSelectedBlock().isRepeater();
 	},
 	getPadding: () => {
-		return blockController.isBLockSelected() && blockController.getFirstSelectedBlock().getPadding();
+		let padding = "__initial__" as StyleValue;
+		blockController.getSelectedBlocks().forEach((block) => {
+			if (padding === "__initial__") {
+				padding = block.getPadding();
+			} else if (padding !== block.getPadding()) {
+				padding = "Mixed";
+			}
+		});
+		return padding;
 	},
 	setPadding: (value: string) => {
-		blockController.getFirstSelectedBlock().setPadding(value);
+		blockController.getSelectedBlocks().forEach((block) => {
+			block.setPadding(value);
+		});
 	},
 	getMargin: () => {
-		return blockController.isBLockSelected() && blockController.getFirstSelectedBlock().getMargin();
+		let margin = "__initial__" as StyleValue;
+		blockController.getSelectedBlocks().forEach((block) => {
+			if (margin === "__initial__") {
+				margin = block.getMargin();
+			} else if (margin !== block.getMargin()) {
+				margin = "Mixed";
+			}
+		});
+		return margin;
 	},
 	setMargin: (value: string) => {
-		blockController.getFirstSelectedBlock().setMargin(value);
+		blockController.getSelectedBlocks().forEach((block) => {
+			block.setMargin(value);
+		});
 	},
 	toggleAttribute: (attribute: string) => {
 		store.activeCanvas?.selectedBlocks.forEach((block) => {
@@ -220,6 +263,29 @@ const blockController = {
 			} else {
 				block.setAttribute(attribute, "");
 			}
+		});
+	},
+	convertToLink: () => {
+		blockController.getSelectedBlocks().forEach((block: Block) => {
+			if (block.isSVG() || block.isImage()) {
+				const parentBlock = block.getParentBlock();
+				if (!parentBlock) return;
+				const newBlockObj = getBlockTemplate("fit-container");
+				const newBlock = parentBlock.addChild(newBlockObj, parentBlock.getChildIndex(block));
+				newBlock.addChild(block);
+				parentBlock.removeChild(block);
+				newBlock.convertToLink();
+				nextTick(() => {
+					newBlock.selectBlock();
+				});
+			} else {
+				block.convertToLink();
+			}
+		});
+	},
+	unsetLink: () => {
+		blockController.getSelectedBlocks().forEach((block) => {
+			block.unsetLink();
 		});
 	},
 };

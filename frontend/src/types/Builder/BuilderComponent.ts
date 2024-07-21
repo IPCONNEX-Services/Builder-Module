@@ -12,7 +12,7 @@ export interface BuilderComponent {
 	/**	Component Name : Data	*/
 	component_name?: string;
 	/**	Block : JSON	*/
-	block?: any;
+	block: string;
 	/**	For Web Page : Link - Builder Page	*/
 	for_web_page?: string;
 	/**	Component ID : Data	*/

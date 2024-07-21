@@ -1,6 +1,7 @@
 <template>
 	<component
 		:is="getComponentName(block)"
+		:selected="isSelected"
 		@click="handleClick"
 		@dblclick="handleDoubleClick"
 		@contextmenu="triggerContextMenu($event)"
@@ -23,6 +24,7 @@
 			v-for="child in block.getChildren()" />
 	</component>
 	<teleport to="#overlay" v-if="canvasProps?.overlayElement && !preview && Boolean(canvasProps)">
+		<!-- prettier-ignore -->
 		<BlockEditor
 			ref="editor"
 			v-if="loadEditor"
@@ -75,6 +77,10 @@ const props = defineProps({
 	},
 });
 
+defineOptions({
+	inheritAttrs: false,
+});
+
 const draggable = computed(() => {
 	// TODO: enable this
 	return !props.block.isRoot() && !props.preview && false;
@@ -122,6 +128,10 @@ const attributes = computed(() => {
 				attribs[props.block.getDataKey("property") as string];
 		}
 	}
+
+	if (props.block.isInput()) {
+		attribs.readonly = true;
+	}
 	return attribs;
 });
 
@@ -137,7 +147,23 @@ const target = computed(() => {
 });
 
 const styles = computed(() => {
-	return { ...props.block.getStyles(props.breakpoint), ...props.block.getEditorStyles() } as BlockStyleMap;
+	let dynamicStyles = {};
+	if (props.data) {
+		if (props.block.getDataKey("type") === "style") {
+			dynamicStyles = {
+				[props.block.getDataKey("property") as string]: getDataForKey(
+					props.data,
+					props.block.getDataKey("key"),
+				),
+			};
+		}
+	}
+
+	return {
+		...props.block.getStyles(props.breakpoint),
+		...props.block.getEditorStyles(),
+		...dynamicStyles,
+	} as BlockStyleMap;
 });
 
 const loadEditor = computed(() => {
@@ -165,7 +191,7 @@ onMounted(async () => {
 		useDraggableBlock(
 			props.block,
 			component.value as HTMLElement,
-			reactive({ ghostScale: canvasProps?.scale || 1 })
+			reactive({ ghostScale: canvasProps?.scale || 1 }),
 		);
 	}
 });
@@ -264,7 +290,7 @@ if (!props.preview) {
 			} else if (oldValue === props.block.blockId) {
 				isHovered.value = false;
 			}
-		}
+		},
 	);
 	watch(
 		() => store.activeCanvas?.selectedBlockIds,
@@ -278,7 +304,7 @@ if (!props.preview) {
 		{
 			deep: true,
 			immediate: true,
-		}
+		},
 	);
 }
 </script>

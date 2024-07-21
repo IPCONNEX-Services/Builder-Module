@@ -44,7 +44,7 @@
 				v-for="breakpoint in visibleBreakpoints"
 				:key="breakpoint.device">
 				<div
-					class="absolute left-0 select-none text-3xl text-gray-700 dark:text-zinc-300"
+					class="cursor absolute left-0 select-none text-3xl text-gray-700 dark:text-zinc-300"
 					:style="{
 						fontSize: `calc(${12}px * 1/${canvasProps.scale})`,
 						top: `calc(${-20}px * 1/${canvasProps.scale})`,
@@ -54,7 +54,9 @@
 					{{ breakpoint.displayName }}
 				</div>
 				<BuilderBlock
+					class="h-full min-h-[inherit]"
 					:block="block"
+					:key="block.blockId"
 					v-if="showBlocks"
 					:breakpoint="breakpoint.device"
 					:data="store.pageData" />
@@ -71,10 +73,19 @@
 	</div>
 </template>
 <script setup lang="ts">
+import builderBlockTemplate from "@/data/builderBlockTemplate";
 import webComponent from "@/data/webComponent";
 import Block from "@/utils/block";
 import getBlockTemplate from "@/utils/blockTemplate";
-import { addPxToNumber, getBlockCopy, getNumberFromPx } from "@/utils/helpers";
+import {
+	addPxToNumber,
+	getBlockCopy,
+	getBlockInstance,
+	getBlockObject,
+	getNumberFromPx,
+	isCtrlOrCmd,
+	isTargetEditable,
+} from "@/utils/helpers";
 import {
 	UseRefHistoryReturn,
 	clamp,
@@ -85,6 +96,7 @@ import {
 } from "@vueuse/core";
 import { FeatherIcon } from "frappe-ui";
 import { Ref, computed, nextTick, onMounted, provide, reactive, ref, watch } from "vue";
+import { toast } from "vue-sonner";
 import useStore from "../store";
 import setPanAndZoom from "../utils/panAndZoom";
 import BlockSnapGuides from "./BlockSnapGuides.vue";
@@ -96,6 +108,8 @@ const canvasContainer = ref(null);
 const canvas = ref(null);
 const showBlocks = ref(false);
 const overlay = ref(null);
+const isDirty = ref(false);
+let selectionTrail = [] as string[];
 
 const props = defineProps({
 	blockData: {
@@ -157,11 +171,14 @@ onMounted(() => {
 
 function setupHistory() {
 	canvasHistory.value = useDebouncedRefHistory(block, {
-		capacity: 200,
+		capacity: 50,
 		deep: true,
 		debounce: 200,
-		clone: (obj) => {
-			return getBlockCopy(obj, true);
+		dump: (obj) => {
+			return getBlockObject(obj);
+		},
+		parse: (obj) => {
+			return getBlockInstance(obj);
 		},
 	});
 }
@@ -175,9 +192,10 @@ const { isOverDropZone } = useDropZone(canvasContainer, {
 				parentBlock = findBlock(element.dataset.blockId) || parentBlock;
 			}
 		}
-		let componentName = ev.dataTransfer?.getData("componentName");
+		const componentName = ev.dataTransfer?.getData("componentName");
+		const blockTemplate = ev.dataTransfer?.getData("blockTemplate");
 		if (componentName) {
-			const newBlock = getBlockCopy(webComponent.getRow(componentName).block, true);
+			const newBlock = getBlockInstance(webComponent.getRow(componentName).block);
 			newBlock.extendFromComponent(componentName);
 			// if shift key is pressed, replace parent block with new block
 			if (ev.shiftKey) {
@@ -197,20 +215,48 @@ const { isOverDropZone } = useDropZone(canvasContainer, {
 				parentBlock.addChild(newBlock);
 			}
 			ev.stopPropagation();
+		} else if (blockTemplate) {
+			const templateDoc = builderBlockTemplate.getRow(blockTemplate);
+			const newBlock = getBlockInstance(templateDoc.block, false);
+			// if shift key is pressed, replace parent block with new block
+			if (ev.shiftKey) {
+				while (parentBlock && parentBlock.isChildOfComponent) {
+					parentBlock = parentBlock.getParentBlock();
+				}
+				if (!parentBlock) return;
+				const parentParentBlock = parentBlock.getParentBlock();
+				if (!parentParentBlock) return;
+				const index = parentParentBlock.children.indexOf(parentBlock);
+				parentParentBlock.children.splice(index, 1, newBlock);
+			} else {
+				while (parentBlock && !parentBlock.canHaveChildren()) {
+					parentBlock = parentBlock.getParentBlock();
+				}
+				if (!parentBlock) return;
+				parentBlock.addChild(newBlock);
+			}
 		} else if (files && files.length) {
 			store.uploadFile(files[0]).then((fileDoc: { fileURL: string; fileName: string }) => {
 				if (!parentBlock) return;
 
 				if (fileDoc.fileName.match(/\.(mp4|webm|ogg|mov)$/)) {
-					while (parentBlock && !parentBlock.canHaveChildren()) {
-						parentBlock = parentBlock.getParentBlock() as Block;
+					if (parentBlock.isVideo()) {
+						parentBlock.setAttribute("src", fileDoc.fileURL);
+					} else {
+						while (parentBlock && !parentBlock.canHaveChildren()) {
+							parentBlock = parentBlock.getParentBlock() as Block;
+						}
+						parentBlock.addChild(store.getVideoBlock(fileDoc.fileURL));
 					}
-					parentBlock.addChild(store.getVideoBlock(fileDoc.fileURL));
 					return;
 				}
 
 				if (parentBlock.isImage()) {
 					parentBlock.setAttribute("src", fileDoc.fileURL);
+				} else if (parentBlock.isSVG()) {
+					const imageBlock = store.getImageBlock(fileDoc.fileURL, fileDoc.fileName);
+					const parentParentBlock = parentBlock.getParentBlock();
+					parentParentBlock?.replaceChild(parentBlock, getBlockInstance(imageBlock));
 				} else if (parentBlock.isContainer() && ev.shiftKey) {
 					parentBlock.setStyle("background", `url(${fileDoc.fileURL})`);
 				} else {
@@ -226,7 +272,7 @@ const { isOverDropZone } = useDropZone(canvasContainer, {
 
 const visibleBreakpoints = computed(() => {
 	return canvasProps.breakpoints.filter(
-		(breakpoint) => breakpoint.visible || breakpoint.device === "desktop"
+		(breakpoint) => breakpoint.visible || breakpoint.device === "desktop",
 	);
 });
 
@@ -260,7 +306,7 @@ function setEvents() {
 			}
 			const child = getBlockTemplate(store.mode);
 			const parentElement = document.body.querySelector(
-				`.canvas [data-block-id="${parentBlock.blockId}"]`
+				`.canvas [data-block-id="${parentBlock.blockId}"]`,
 			) as HTMLElement;
 			const parentOldPosition = parentBlock.getStyle("position");
 			if (parentOldPosition === "static" || parentOldPosition === "inherit" || !parentOldPosition) {
@@ -291,7 +337,8 @@ function setEvents() {
 					let height = (mouseMoveEvent.clientY - initialY) / canvasProps.scale;
 					width = clamp(width, 0, parentWidth);
 					height = clamp(height, 0, parentHeight);
-					childBlock.setBaseStyle("width", addPxToNumber(width));
+					const setFullWidth = width === parentWidth;
+					childBlock.setBaseStyle("width", setFullWidth ? "100%" : addPxToNumber(width));
 					childBlock.setBaseStyle("height", addPxToNumber(height));
 				}
 			};
@@ -313,15 +360,20 @@ function setEvents() {
 						store.editableBlock = childBlock;
 						return;
 					}
-					if (getNumberFromPx(childBlock.getStyle("width")) < 100) {
-						childBlock.setBaseStyle("width", "100%");
-					}
-					if (getNumberFromPx(childBlock.getStyle("height")) < 100) {
-						childBlock.setBaseStyle("height", "200px");
+					if (parentBlock.isGrid()) {
+						childBlock.setStyle("width", "auto");
+						childBlock.setStyle("height", "100%");
+					} else {
+						if (getNumberFromPx(childBlock.getStyle("width")) < 100) {
+							childBlock.setBaseStyle("width", "100%");
+						}
+						if (getNumberFromPx(childBlock.getStyle("height")) < 100) {
+							childBlock.setBaseStyle("height", "200px");
+						}
 					}
 					canvasHistory.value?.resume(true);
 				},
-				{ once: true }
+				{ once: true },
 			);
 		}
 	});
@@ -348,10 +400,76 @@ function setEvents() {
 					document.removeEventListener("mousemove", mouseMoveHandler);
 					container.style.cursor = "grab";
 				},
-				{ once: true }
+				{ once: true },
 			);
 			ev.stopPropagation();
 			ev.preventDefault();
+		}
+	});
+
+	useEventListener(document, "keydown", (ev: KeyboardEvent) => {
+		if (isTargetEditable(ev)) {
+			return;
+		}
+		if (ev.shiftKey && ev.key === "ArrowLeft") {
+			if (isCtrlOrCmd(ev)) {
+				if (selectedBlocks.value.length) {
+					const selectedBlock = selectedBlocks.value[0];
+					store.activeLayers?.toggleExpanded(selectedBlock);
+					return;
+				}
+			}
+			if (selectedBlocks.value.length) {
+				const selectedBlock = selectedBlocks.value[0];
+				const parentBlock = selectedBlock.getParentBlock();
+				if (parentBlock) {
+					selectionTrail.push(selectedBlock.blockId);
+					maintainTrail = true;
+					store.selectBlock(parentBlock, null, true, true);
+					maintainTrail = false;
+				}
+			}
+		}
+		if (ev.shiftKey && ev.key === "ArrowRight") {
+			const blockId = selectionTrail.pop();
+			if (blockId) {
+				const block = findBlock(blockId);
+				if (block) {
+					maintainTrail = true;
+					store.selectBlock(block, null, true, true);
+					maintainTrail = false;
+				}
+			} else {
+				if (selectedBlocks.value.length) {
+					const selectedBlock = selectedBlocks.value[0];
+					if (selectedBlock.children && selectedBlock.isVisible()) {
+						let child = selectedBlock.children[0];
+						while (child && !child.isVisible()) {
+							child = child.getSiblingBlock("next") as Block;
+							if (!child) {
+								break;
+							}
+						}
+						child && store.selectBlock(child, null, true, true);
+					}
+				}
+			}
+		}
+		if (ev.shiftKey && ev.key === "ArrowUp") {
+			if (selectedBlocks.value.length) {
+				let sibling = selectedBlocks.value[0].getSiblingBlock("previous");
+				if (sibling) {
+					store.selectBlock(sibling, null, true, true);
+				}
+			}
+		}
+		if (ev.shiftKey && ev.key === "ArrowDown") {
+			if (selectedBlocks.value.length) {
+				let sibling = selectedBlocks.value[0].getSiblingBlock("next");
+				if (sibling) {
+					store.selectBlock(sibling, null, true, true);
+				}
+			}
 		}
 	});
 }
@@ -428,7 +546,7 @@ watch(
 			return;
 		}
 		setScaleAndTranslate();
-	}
+	},
 );
 
 watch(
@@ -436,7 +554,7 @@ watch(
 	(newValue, oldValue) => {
 		store.lastMode = oldValue;
 		toggleMode(store.mode);
-	}
+	},
 );
 
 function toggleMode(mode: BuilderMode) {
@@ -479,6 +597,7 @@ const setRootBlock = (newBlock: Block, resetCanvas = false) => {
 	if (resetCanvas) {
 		nextTick(() => {
 			setScaleAndTranslate();
+			toggleDirty(false);
 		});
 	}
 };
@@ -492,11 +611,16 @@ const isSelected = (block: Block) => {
 	return selectedBlockIds.value.includes(block.blockId);
 };
 
+let maintainTrail = false;
+
 const selectBlock = (_block: Block, multiSelect = false) => {
 	if (multiSelect) {
 		selectedBlockIds.value.push(_block.blockId);
 	} else {
 		selectedBlockIds.value.splice(0, selectedBlockIds.value.length, _block.blockId);
+	}
+	if (!maintainTrail) {
+		selectionTrail = [];
 	}
 };
 
@@ -510,30 +634,6 @@ const toggleBlockSelection = (_block: Block) => {
 
 const clearSelection = () => {
 	selectedBlockIds.value = [];
-};
-
-const findParentBlock = (blockId: string, blocks?: Block[]): Block | null => {
-	if (!blocks) {
-		const firstBlock = getFirstBlock();
-		if (!firstBlock) {
-			return null;
-		}
-		blocks = [firstBlock];
-	}
-	for (const block of blocks) {
-		if (block.children) {
-			for (const child of block.children) {
-				if (child.blockId === blockId) {
-					return block;
-				}
-			}
-			const found = findParentBlock(blockId, block.children);
-			if (found) {
-				return found;
-			}
-		}
-	}
-	return null;
 };
 
 const findBlock = (blockId: string, blocks?: Block[]): Block | null => {
@@ -554,6 +654,129 @@ const findBlock = (blockId: string, blocks?: Block[]): Block | null => {
 	return null;
 };
 
+const removeBlock = (block: Block) => {
+	if (block.blockId === "root") {
+		toast.warning("Warning", {
+			description: "Cannot delete root block",
+		});
+		return;
+	}
+	if (block.isChildOfComponentBlock()) {
+		toast.warning("Warning", {
+			description: "Cannot delete block inside component",
+		});
+		return;
+	}
+	const parentBlock = block.parentBlock;
+	if (!parentBlock) {
+		return;
+	}
+	const index = parentBlock.children.indexOf(block);
+	parentBlock.removeChild(block);
+	nextTick(() => {
+		if (parentBlock.children.length) {
+			const nextSibling = parentBlock.children[index] || parentBlock.children[index - 1];
+			if (nextSibling) {
+				selectBlock(nextSibling);
+			}
+		}
+	});
+};
+
+watch(
+	() => block,
+	() => {
+		toggleDirty(true);
+	},
+	{
+		deep: true,
+	},
+);
+
+const toggleDirty = (dirty: boolean | null = null) => {
+	if (dirty === null) {
+		isDirty.value = !isDirty.value;
+	} else {
+		isDirty.value = dirty;
+	}
+};
+
+const scrollBlockIntoView = async (blockToFocus: Block) => {
+	// wait for editor to render
+	await new Promise((resolve) => setTimeout(resolve, 100));
+	await nextTick();
+	if (
+		!canvasContainer.value ||
+		!canvas.value ||
+		blockToFocus.isRoot() ||
+		!blockToFocus.isVisible() ||
+		blockToFocus.getParentBlock()?.isSVG()
+	) {
+		return;
+	}
+	const container = canvasContainer.value as HTMLElement;
+	const containerRect = container.getBoundingClientRect();
+	const selectedBlock = document.body.querySelector(
+		`.editor[data-block-id="${blockToFocus.blockId}"][selected=true]`,
+	) as HTMLElement;
+	if (!selectedBlock) {
+		return;
+	}
+	const blockRect = reactive(useElementBounding(selectedBlock));
+	// check if block is in view
+	if (
+		blockRect.top >= containerRect.top &&
+		blockRect.bottom <= containerRect.bottom &&
+		blockRect.left >= containerRect.left &&
+		blockRect.right <= containerRect.right
+	) {
+		return;
+	}
+
+	let padding = 80;
+	let paddingBottom = 200;
+	const blockWidth = blockRect.width + padding * 2;
+	const containerBound = container.getBoundingClientRect();
+	const blockHeight = blockRect.height + padding + paddingBottom;
+
+	const scaleX = containerBound.width / blockWidth;
+	const scaleY = containerBound.height / blockHeight;
+	const newScale = Math.min(scaleX, scaleY);
+
+	const scaleDiff = canvasProps.scale - canvasProps.scale * newScale;
+	if (scaleDiff > 0.2) {
+		return;
+	}
+
+	if (newScale < 1) {
+		canvasProps.scale = canvasProps.scale * newScale;
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		await nextTick();
+		blockRect.update();
+	}
+
+	padding = padding * canvasProps.scale;
+	paddingBottom = paddingBottom * canvasProps.scale;
+
+	// slide in block from the closest edge of the container
+	const diffTop = containerRect.top - blockRect.top + padding;
+	const diffBottom = blockRect.bottom - containerRect.bottom + paddingBottom;
+	const diffLeft = containerRect.left - blockRect.left + padding;
+	const diffRight = blockRect.right - containerRect.right + padding;
+
+	if (diffTop > 0) {
+		canvasProps.translateY += diffTop / canvasProps.scale;
+	} else if (diffBottom > 0) {
+		canvasProps.translateY -= diffBottom / canvasProps.scale;
+	}
+
+	if (diffLeft > 0) {
+		canvasProps.translateX += diffLeft / canvasProps.scale;
+	} else if (diffRight > 0) {
+		canvasProps.translateX -= diffRight / canvasProps.scale;
+	}
+};
+
 defineExpose({
 	setScaleAndTranslate,
 	resetZoom,
@@ -572,7 +795,10 @@ defineExpose({
 	clearSelection,
 	isSelected,
 	selectedBlockIds,
-	findParentBlock,
 	findBlock,
+	isDirty,
+	toggleDirty,
+	scrollBlockIntoView,
+	removeBlock,
 });
 </script>
