@@ -29,6 +29,8 @@ export default defineConfig({
 		chunkSizeWarningLimit: 1000,
 	},
 	optimizeDeps: {
+		// Frappe UI contains virtual icon imports resolved by its Vite plugin.
+		exclude: ["frappe-ui"],
 		include: ["feather-icons", "engine.io-client"],
 	},
 });
