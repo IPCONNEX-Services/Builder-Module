@@ -25,14 +25,14 @@ jobs:
       - run: yarn build
       - name: Development server smoke test
         run: |
-          setsid yarn dev --host 127.0.0.1 --port 4173 --strictPort > /tmp/builder-vite.log 2>&1 &
+          setsid yarn dev --host 127.0.0.1 --strictPort > /tmp/builder-vite.log 2>&1 &
           vite_pid=$!
           trap 'kill -- -"$vite_pid" 2>/dev/null || true' EXIT
-          if ! curl --fail --silent --retry 20 --retry-connrefused --retry-delay 1 --max-time 3 http://127.0.0.1:4173/src/main.ts -o /tmp/builder-main.js; then
+          if ! curl --fail --silent --retry 20 --retry-connrefused --retry-delay 1 --max-time 3 http://127.0.0.1:8080/src/main.ts -o /tmp/builder-main.js; then
             cat /tmp/builder-vite.log
             exit 1
           fi
-          curl --fail --silent http://127.0.0.1:4173/@id/__x00__~icons/lucide/heading-1 -o /tmp/builder-icon.js
+          curl --fail --silent http://127.0.0.1:8080/@id/__x00__~icons/lucide/heading-1 -o /tmp/builder-icon.js
           sleep 2
           kill -0 "$vite_pid"
       - run: yarn test:audit
