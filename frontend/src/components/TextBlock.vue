@@ -10,22 +10,9 @@
 		<bubble-menu
 			ref="menu"
 			:editor="editor"
-			:tippy-options="{
-				appendTo: overlayElement,
-				onCreate: (instance) => {
-					watch(
-						() => canvasProps,
-						() => {
-							if (canvasProps?.panning || canvasProps?.scaling) {
-								instance.hide();
-							} else {
-								instance.show();
-							}
-						},
-						{ deep: true },
-					);
-				},
-			}"
+			:append-to="overlayElement"
+			:options="{ placement: 'top', offset: 6 }"
+			:style="{ visibility: canvasProps?.panning || canvasProps?.scaling ? 'hidden' : undefined }"
 			v-if="editor"
 			class="z-50 rounded-md border border-gray-300 bg-white p-1 text-lg">
 			<div v-if="settingLink" class="flex">
@@ -127,11 +114,12 @@ import { getDataForKey } from "@/utils/helpers";
 import { Color } from "@tiptap/extension-color";
 import { FontFamily } from "@tiptap/extension-font-family";
 import { Link } from "@tiptap/extension-link";
-import TextStyle from "@tiptap/extension-text-style";
+import { TextStyle } from "@tiptap/extension-text-style";
 import StarterKit from "@tiptap/starter-kit";
-import { BubbleMenu, Editor, EditorContent, Extension } from "@tiptap/vue-3";
+import { Editor, EditorContent, Extension } from "@tiptap/vue-3";
+import { BubbleMenu } from "@tiptap/vue-3/menus";
 import { Input } from "frappe-ui";
-import { Plugin, PluginKey } from "prosemirror-state";
+import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Ref, computed, inject, nextTick, onBeforeMount, onBeforeUnmount, ref, watch } from "vue";
 import StrikeThroughIcon from "./Icons/StrikeThrough.vue";
 
@@ -233,7 +221,7 @@ watch(
 		if (isSame) {
 			return;
 		}
-		editor.value?.commands.setContent(newValue || "", false);
+		editor.value?.commands.setContent(newValue || "", { emitUpdate: false });
 	},
 );
 
@@ -246,7 +234,7 @@ if (!props.preview) {
 				editor.value = new Editor({
 					content: textContent.value,
 					extensions: [
-						StarterKit,
+						StarterKit.configure({ link: false, underline: false, trailingNode: false }),
 						TextStyle,
 						Color,
 						FontFamily,

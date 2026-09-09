@@ -1,5 +1,5 @@
 import colors from "tailwindcss/colors";
-import tailwindConfig from "frappe-ui/src/utils/tailwind.config";
+import tailwindConfig from "frappe-ui/tailwind";
 import plugin from "tailwindcss/plugin";
 
 module.exports = {

@@ -1,12 +1,23 @@
 {
-    "private": true,
-    "workspaces": [
-        "frontend",
-        "frappe-ui"
-    ],
-    "scripts": {
-        "postinstall": "cd frontend && yarn install",
-        "dev": "cd frontend && yarn dev",
-        "build": "cd frontend && yarn build"
-    }
+  "private": true,
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "cd frontend && yarn dev",
+    "build": "cd frontend && yarn build",
+    "test:unit": "yarn workspace builder-ui test:unit",
+    "audit:lock": "node scripts/audit-lock.mjs",
+    "test:audit": "node --test scripts/audit-lock.test.mjs"
+  },
+  "packageManager": "yarn@1.22.22",
+  "engines": {
+    "node": ">=22.12.0 <23 || >=24.0.0 <25"
+  },
+  "resolutions": {
+    "echarts": "^6.1.0"
+  },
+  "devDependencies": {
+    "@yarnpkg/lockfile": "1.1.0"
+  }
 }

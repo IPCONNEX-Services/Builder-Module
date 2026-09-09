@@ -8,3 +8,7 @@ builder/public/frontend
 builder/public/page_scripts
 builder/public/page_styles
 builder/www/_builder.html
+frontend/auto-imports.d.ts
+frontend/components.d.ts
+frontend/cypress/screenshots/
+frontend/cypress/videos/
