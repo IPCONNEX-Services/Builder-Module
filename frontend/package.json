@@ -21,7 +21,7 @@
     "@tiptap/vue-3": "3.31.3",
     "@vitejs/plugin-vue": "6.0.8",
     "@vueuse/components": "^10.2.1",
-    "@vueuse/core": "^10.2.1",
+    "@vueuse/core": "^14.4.0",
     "ace-builds": "^1.22.0",
     "autoprefixer": "^10.4.2",
     "feather-icons": "^4.28.0",
