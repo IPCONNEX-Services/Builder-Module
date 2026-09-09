@@ -101,7 +101,7 @@ jobs:
         run: yarn test
       - name: Upload failure evidence
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: builder-integration-failure
           path: |
