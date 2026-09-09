@@ -3,7 +3,7 @@ name: Builder checks
 on:
   pull_request:
   push:
-    branches: [main, 'security/**']
+    branches: [main]
 
 permissions:
   contents: read
@@ -23,7 +23,8 @@ jobs:
           CYPRESS_INSTALL_BINARY: '0'
       - run: yarn test:unit
       - run: yarn build
-      - run: yarn audit --groups 'dependencies devDependencies optionalDependencies'
+      - run: yarn test:audit
+      - run: yarn audit:lock
 
   integration:
     runs-on: ubuntu-22.04

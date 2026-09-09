@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "cd frontend && yarn dev",
     "build": "cd frontend && yarn build",
-    "test:unit": "yarn workspace builder-ui test:unit"
+    "test:unit": "yarn workspace builder-ui test:unit",
+    "audit:lock": "node scripts/audit-lock.mjs",
+    "test:audit": "node --test scripts/audit-lock.test.mjs"
   },
   "packageManager": "yarn@1.22.22",
   "engines": {
@@ -14,5 +16,8 @@
   },
   "resolutions": {
     "echarts": "^6.1.0"
+  },
+  "devDependencies": {
+    "@yarnpkg/lockfile": "1.1.0"
   }
 }

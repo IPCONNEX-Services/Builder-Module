@@ -50,7 +50,7 @@ describe("Builder page lifecycle", () => {
 		cy.reload();
 		cy.get('[data-block-id="security-text"]').first().should("contain", "Updated website text");
 		cy.get('a[title="Preview"]').click();
-		cy.contains("Updated website text").should("be.visible");
+		cy.get("iframe").its("0.contentDocument.body").should("contain.text", "Updated website text");
 		cy.request(`/${route}`).its("body").should("contain", "Updated website text");
 	});
 });

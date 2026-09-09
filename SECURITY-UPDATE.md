@@ -18,7 +18,7 @@ This repository is a Frappe website builder. It can run in a VM, but does not pr
 1. `yarn install --frozen-lockfile` from repository root; a frozen install must leave the lockfile unchanged.
 2. `yarn test:unit`: actual TextBlock mount, formatting, links, font/color, silent external updates, undo, teardown, and the Tiptap prototype-attribute regression.
 3. `yarn build`: compile the full application and copy the Frappe HTML entry point.
-4. `yarn audit --groups 'dependencies devDependencies optionalDependencies'`: any advisory fails the job.
+4. `yarn audit:lock`: query every locked package/version (including workspace development and optional dependencies); any advisory or registry error fails the job. Yarn Classic’s tree audit missed a development advisory during this review.
 5. The integration CI job installs this app on a disposable Frappe 15 site, runs the existing Python tests, and exercises login, landing, edit/save/reload, preview and publish with Cypress. Python tests in this repository are currently placeholders; browser assertions provide the meaningful site-level coverage.
 
 Tests are necessary here because Tiptap and Frappe UI change public APIs. For a future compatible transitive patch, frozen install, audit and build are the minimum; repeat affected component/browser tests when the dependency touches editor behavior, routing, authentication, file upload or published output.
