@@ -1,6 +1,7 @@
 describe("Builder page lifecycle", () => {
 	let pageName;
 	let route;
+	beforeEach(() => cy.login());
 
 	before(() => {
 		cy.login();
@@ -27,7 +28,10 @@ describe("Builder page lifecycle", () => {
 	});
 
 	after(() => {
-		if (pageName) cy.request("DELETE", `/api/resource/Builder Page/${pageName}`);
+		if (pageName) {
+			cy.login();
+			cy.request("DELETE", `/api/resource/Builder Page/${pageName}`);
+		}
 	});
 
 	it("edits, saves, previews, and publishes a page", () => {

@@ -11,6 +11,7 @@ This repository is a Frappe website builder. It can run in a VM, but does not pr
 - Resolve ECharts to the patched 6.1 series because Frappe UI still requests the vulnerable 5.x series. Builder does not use chart components; reassess this override when updating Frappe UI.
 - Remove the recursive postinstall and nonexistent local frappe-ui workspace. Pin Yarn 1.22.22; build/test on Node 22.12+ (22.x) or Node 24.
 - Replace the obsolete CI branch trigger, pin Frappe integration tests to version-15, and remove Cypress Cloud recording and its embedded key. Tests run without sending recordings to a third party.
+- Consolidate the retired server workflow into the integration job. Fix the route permission check to pass an empty document name: current Frappe 15 rejects null for its typed `docname` argument, preventing the editor from opening.
 
 ## Required verification
 

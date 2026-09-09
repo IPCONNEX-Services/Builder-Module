@@ -1,5 +1,5 @@
 describe("Builder Landing", () => {
-	before(() => {
+	beforeEach(() => {
 		cy.login();
 	});
 	it("Open builder page", () => {
