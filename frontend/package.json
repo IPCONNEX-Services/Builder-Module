@@ -1,6 +1,6 @@
 {
   "private": true,
-  "version": "0.0.0",
+  "version": "1.10.2",
   "name": "builder-ui",
   "scripts": {
     "dev": "vite",
@@ -8,43 +8,45 @@
     "copy-html-entry": "cp ../builder/public/frontend/index.html ../builder/www/_builder.html",
     "preview": "vite preview",
     "test-local": "cypress open --e2e --browser chrome",
-    "test": "npx cypress run --record --key fa50a4df-569e-41bc-8600-850331fd1630"
+    "test": "cypress run",
+    "test:unit": "vitest run"
   },
   "dependencies": {
-    "@tiptap/extension-color": "^2.0.4",
-    "@tiptap/extension-font-family": "^2.0.4",
-    "@tiptap/extension-link": "^2.1.12",
-    "@tiptap/extension-text-style": "^2.0.4",
-    "@tiptap/pm": "^2.0.4",
-    "@tiptap/starter-kit": "^2.0.4",
-    "@tiptap/vue-3": "^2.0.4",
-    "@vitejs/plugin-vue": "5",
+    "@tiptap/extension-color": "3.31.3",
+    "@tiptap/extension-font-family": "3.31.3",
+    "@tiptap/extension-link": "3.31.3",
+    "@tiptap/extension-text-style": "3.31.3",
+    "@tiptap/pm": "3.31.3",
+    "@tiptap/starter-kit": "3.31.3",
+    "@tiptap/vue-3": "3.31.3",
+    "@vitejs/plugin-vue": "6.0.8",
     "@vueuse/components": "^10.2.1",
     "@vueuse/core": "^10.2.1",
     "ace-builds": "^1.22.0",
     "autoprefixer": "^10.4.2",
     "feather-icons": "^4.28.0",
-    "frappe-ui": "^0.1.43",
+    "frappe-ui": "0.1.278",
     "pinia": "^2.0.28",
-    "postcss": "^8.4.5",
+    "postcss": "^8.5.26",
     "tailwindcss": "^3.3.2",
-    "vite": "^5.2.6",
-    "vue": "^3.2.25",
+    "vite": "6.4.3",
+    "vue": "^3.5.0",
     "vue-router": "^4.0.12",
     "vue-sonner": "^1.0.2",
     "vuedraggable": "^4.1.0",
-    "webfontloader": "^1.6.28"
+    "webfontloader": "^1.6.28",
+    "@tiptap/core": "3.31.3",
+    "@floating-ui/dom": "^1.7.4"
   },
   "devDependencies": {
-    "cypress": "^13.3.2",
+    "cypress": "16.0.0",
     "eslint": "^8.38.0",
     "eslint-plugin-import": "^2.27.5",
     "eslint-plugin-vue": "^9.11.0",
     "prettier": "^2.8.8",
     "prettier-plugin-tailwindcss": "^0.2.8",
-    "tslib": "^2.5.0"
-  },
-  "peerDependencies": {
-    "ace-builds": "^1.22.0"
+    "tslib": "^2.5.0",
+    "vitest": "^3.2.4",
+    "jsdom": "^26.1.0"
   }
 }
