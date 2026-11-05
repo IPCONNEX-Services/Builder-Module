@@ -7,7 +7,7 @@ function run(response, status = 200) {
   return spawnSync(process.execPath, ["--input-type=module", "-e", `
     globalThis.fetch = async (url, options) => {
       const packages = JSON.parse(options.body);
-      if (!packages.cypress || !packages['@rollup/rollup-linux-x64-gnu']) {
+      if (!packages.cypress || !packages.rolldown) {
         throw new Error('Development or optional dependencies were omitted');
       }
       return new Response(${JSON.stringify(JSON.stringify(response))}, { status: ${status} });
